@@ -1,4 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { Book } from './entities/book.entity';
 import { CreateBookDto } from './dto/create-book.dto';
 import { UpdateBookDto } from './dto/update-book.dto';
@@ -6,14 +8,15 @@ import { LoggerService } from '../common/logger/logger.service';
 
 @Injectable()
 export class BooksService {
-  private books: Book[] = [];
-  private nextId = 1;
-
-  constructor(private readonly logger: LoggerService) {
+  constructor(
+    @InjectRepository(Book)
+    private readonly bookRepository: Repository<Book>,
+    private readonly logger: LoggerService,
+  ) {
     this.logger.info('BooksService initialized', 'BOOKS_SERVICE');
   }
 
-  create(createBookDto: CreateBookDto): Book {
+  async create(createBookDto: CreateBookDto): Promise<Book> {
     this.logger.debug('Creating new book', 'BOOKS_SERVICE', {
       title: createBookDto.title,
       isbn: createBookDto.isbn,
@@ -21,7 +24,9 @@ export class BooksService {
     });
 
     // Check if ISBN already exists
-    const existingBook = this.books.find(book => book.isbn === createBookDto.isbn);
+    const existingBook = await this.bookRepository.findOne({
+      where: { isbn: createBookDto.isbn },
+    });
     if (existingBook) {
       this.logger.warn('Attempted to create book with duplicate ISBN', 'BOOKS_SERVICE', {
         isbn: createBookDto.isbn,
@@ -30,40 +35,37 @@ export class BooksService {
       throw new BadRequestException('A book with this ISBN already exists');
     }
 
-    const book: Book = {
-      id: this.nextId++,
+    const book = this.bookRepository.create({
       ...createBookDto,
       available: createBookDto.available ?? true,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
+    });
 
-    this.books.push(book);
+    const savedBook = await this.bookRepository.save(book);
     this.logger.info('Book created successfully', 'BOOKS_SERVICE', {
-      bookId: book.id,
-      title: book.title,
-      isbn: book.isbn,
+      bookId: savedBook.id,
+      title: savedBook.title,
+      isbn: savedBook.isbn,
     });
     this.logger.logBusinessEvent('BOOK_CREATED', {
-      bookId: book.id,
-      title: book.title,
+      bookId: savedBook.id,
+      title: savedBook.title,
     });
 
-    return book;
+    return savedBook;
   }
 
-  findAll(): Book[] {
+  async findAll(): Promise<Book[]> {
+    const books = await this.bookRepository.find();
     this.logger.debug('Fetching all books', 'BOOKS_SERVICE', {
-      totalBooks: this.books.length,
+      totalBooks: books.length,
     });
-    const books = this.books;
     this.logger.verbose(`Retrieved ${books.length} books`, 'BOOKS_SERVICE');
     return books;
   }
 
-  findOne(id: number): Book {
+  async findOne(id: number): Promise<Book> {
     this.logger.debug(`Fetching book with ID: ${id}`, 'BOOKS_SERVICE', { bookId: id });
-    const book = this.books.find(book => book.id === id);
+    const book = await this.bookRepository.findOne({ where: { id } });
     if (!book) {
       this.logger.warn(`Book not found: ${id}`, 'BOOKS_SERVICE', { bookId: id });
       throw new NotFoundException(`Book with ID ${id} not found`);
@@ -75,11 +77,13 @@ export class BooksService {
     return book;
   }
 
-  findByAuthor(authorId: number): Book[] {
+  async findByAuthor(authorId: number): Promise<Book[]> {
     this.logger.debug(`Fetching books by author: ${authorId}`, 'BOOKS_SERVICE', {
       authorId,
     });
-    const books = this.books.filter(book => book.authorId === authorId);
+    const books = await this.bookRepository.find({
+      where: { authorId },
+    });
     this.logger.info(`Found ${books.length} books for author ${authorId}`, 'BOOKS_SERVICE', {
       authorId,
       count: books.length,
@@ -87,13 +91,14 @@ export class BooksService {
     return books;
   }
 
-  findByGenre(genre: string): Book[] {
+  async findByGenre(genre: string): Promise<Book[]> {
     this.logger.debug(`Searching books by genre: ${genre}`, 'BOOKS_SERVICE', {
       genre,
     });
-    const books = this.books.filter(book => 
-      book.genre?.toLowerCase().includes(genre.toLowerCase())
-    );
+    const books = await this.bookRepository
+      .createQueryBuilder('book')
+      .where('LOWER(book.genre) LIKE LOWER(:genre)', { genre: `%${genre}%` })
+      .getMany();
     this.logger.info(`Found ${books.length} books in genre "${genre}"`, 'BOOKS_SERVICE', {
       genre,
       count: books.length,
@@ -101,38 +106,41 @@ export class BooksService {
     return books;
   }
 
-  findAvailable(): Book[] {
+  async findAvailable(): Promise<Book[]> {
     this.logger.debug('Fetching available books', 'BOOKS_SERVICE');
-    const books = this.books.filter(book => book.available === true);
+    const books = await this.bookRepository.find({
+      where: { available: true },
+    });
+    const totalCount = await this.bookRepository.count();
     this.logger.info(`Found ${books.length} available books`, 'BOOKS_SERVICE', {
       availableCount: books.length,
-      totalCount: this.books.length,
+      totalCount,
     });
     return books;
   }
 
-  update(id: number, updateBookDto: UpdateBookDto): Book {
+  async update(id: number, updateBookDto: UpdateBookDto): Promise<Book> {
     this.logger.debug(`Updating book with ID: ${id}`, 'BOOKS_SERVICE', {
       bookId: id,
       updates: updateBookDto,
     });
 
-    const bookIndex = this.books.findIndex(book => book.id === id);
-    if (bookIndex === -1) {
+    const book = await this.bookRepository.findOne({ where: { id } });
+    if (!book) {
       this.logger.warn(`Book not found for update: ${id}`, 'BOOKS_SERVICE', {
         bookId: id,
       });
       throw new NotFoundException(`Book with ID ${id} not found`);
     }
 
-    const oldBook = { ...this.books[bookIndex] };
+    const oldBook = { ...book };
 
     // Check if ISBN is being updated and already exists
     if (updateBookDto.isbn) {
-      const existingBook = this.books.find(
-        book => book.isbn === updateBookDto.isbn && book.id !== id
-      );
-      if (existingBook) {
+      const existingBook = await this.bookRepository.findOne({
+        where: { isbn: updateBookDto.isbn },
+      });
+      if (existingBook && existingBook.id !== id) {
         this.logger.warn('Attempted to update book with duplicate ISBN', 'BOOKS_SERVICE', {
           bookId: id,
           isbn: updateBookDto.isbn,
@@ -142,13 +150,9 @@ export class BooksService {
       }
     }
 
-    const updatedBook = {
-      ...this.books[bookIndex],
-      ...updateBookDto,
-      updatedAt: new Date(),
-    };
+    Object.assign(book, updateBookDto);
+    const updatedBook = await this.bookRepository.save(book);
 
-    this.books[bookIndex] = updatedBook;
     this.logger.info('Book updated successfully', 'BOOKS_SERVICE', {
       bookId: id,
       changes: Object.keys(updateBookDto),
@@ -167,25 +171,24 @@ export class BooksService {
     return updatedBook;
   }
 
-  remove(id: number): void {
+  async remove(id: number): Promise<void> {
     this.logger.debug(`Deleting book with ID: ${id}`, 'BOOKS_SERVICE', { bookId: id });
-    const bookIndex = this.books.findIndex(book => book.id === id);
-    if (bookIndex === -1) {
+    const book = await this.bookRepository.findOne({ where: { id } });
+    if (!book) {
       this.logger.warn(`Book not found for deletion: ${id}`, 'BOOKS_SERVICE', {
         bookId: id,
       });
       throw new NotFoundException(`Book with ID ${id} not found`);
     }
 
-    const deletedBook = this.books[bookIndex];
-    this.books.splice(bookIndex, 1);
+    await this.bookRepository.remove(book);
     this.logger.info('Book deleted successfully', 'BOOKS_SERVICE', {
       bookId: id,
-      title: deletedBook.title,
+      title: book.title,
     });
     this.logger.logBusinessEvent('BOOK_DELETED', {
       bookId: id,
-      title: deletedBook.title,
+      title: book.title,
     });
   }
 }

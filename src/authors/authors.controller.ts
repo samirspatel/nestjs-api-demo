@@ -41,13 +41,13 @@ export class AuthorsController {
     type: AuthorResponseDto,
   })
   @ApiResponse({ status: 400, description: 'Bad request - Invalid input.' })
-  create(@Body() createAuthorDto: CreateAuthorDto) {
+  async create(@Body() createAuthorDto: CreateAuthorDto) {
     this.logger.info('POST /authors - Creating new author', 'AUTHORS_CONTROLLER', {
       firstName: createAuthorDto.firstName,
       lastName: createAuthorDto.lastName,
     });
     try {
-      const author = this.authorsService.create(createAuthorDto);
+      const author = await this.authorsService.create(createAuthorDto);
       this.logger.info('Author creation successful', 'AUTHORS_CONTROLLER', {
         authorId: author.id,
       });
@@ -70,9 +70,9 @@ export class AuthorsController {
     description: 'List of all authors',
     type: [AuthorResponseDto],
   })
-  findAll() {
+  async findAll() {
     this.logger.debug('GET /authors - Fetching all authors', 'AUTHORS_CONTROLLER');
-    const authors = this.authorsService.findAll();
+    const authors = await this.authorsService.findAll();
     this.logger.verbose(`Returning ${authors.length} authors`, 'AUTHORS_CONTROLLER', {
       count: authors.length,
     });
@@ -88,12 +88,12 @@ export class AuthorsController {
     type: AuthorResponseDto,
   })
   @ApiResponse({ status: 404, description: 'Author not found.' })
-  findOne(@Param('id') id: string) {
+  async findOne(@Param('id') id: string) {
     this.logger.debug(`GET /authors/${id} - Fetching author`, 'AUTHORS_CONTROLLER', {
       authorId: id,
     });
     try {
-      const author = this.authorsService.findOne(+id);
+      const author = await this.authorsService.findOne(+id);
       this.logger.verbose('Author retrieved successfully', 'AUTHORS_CONTROLLER', {
         authorId: author.id,
         fullName: `${author.firstName} ${author.lastName}`,
@@ -121,13 +121,13 @@ export class AuthorsController {
   })
   @ApiResponse({ status: 404, description: 'Author not found.' })
   @ApiResponse({ status: 400, description: 'Bad request - Invalid input.' })
-  update(@Param('id') id: string, @Body() updateAuthorDto: UpdateAuthorDto) {
+  async update(@Param('id') id: string, @Body() updateAuthorDto: UpdateAuthorDto) {
     this.logger.info(`PATCH /authors/${id} - Updating author`, 'AUTHORS_CONTROLLER', {
       authorId: id,
       updates: Object.keys(updateAuthorDto),
     });
     try {
-      const author = this.authorsService.update(+id, updateAuthorDto);
+      const author = await this.authorsService.update(+id, updateAuthorDto);
       this.logger.info('Author update successful', 'AUTHORS_CONTROLLER', {
         authorId: author.id,
       });
@@ -149,12 +149,12 @@ export class AuthorsController {
   @ApiParam({ name: 'id', type: Number, description: 'Author ID' })
   @ApiResponse({ status: 204, description: 'The author has been successfully deleted.' })
   @ApiResponse({ status: 404, description: 'Author not found.' })
-  remove(@Param('id') id: string) {
+  async remove(@Param('id') id: string) {
     this.logger.info(`DELETE /authors/${id} - Deleting author`, 'AUTHORS_CONTROLLER', {
       authorId: id,
     });
     try {
-      this.authorsService.remove(+id);
+      await this.authorsService.remove(+id);
       this.logger.info('Author deletion successful', 'AUTHORS_CONTROLLER', {
         authorId: id,
       });

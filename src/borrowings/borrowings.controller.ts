@@ -73,7 +73,7 @@ export class BorrowingsController {
     description: 'List of all borrowings',
     type: [BorrowingResponseDto],
   })
-  findAll(
+  async findAll(
     @Query('borrowerEmail') borrowerEmail?: string,
     @Query('bookId') bookId?: string,
   ) {
@@ -84,12 +84,12 @@ export class BorrowingsController {
     let result;
     if (borrowerEmail) {
       this.logger.info(`Filtering borrowings by borrower: ${borrowerEmail}`, 'BORROWINGS_CONTROLLER');
-      result = this.borrowingsService.findByBorrower(borrowerEmail);
+      result = await this.borrowingsService.findByBorrower(borrowerEmail);
     } else if (bookId) {
       this.logger.info(`Filtering borrowings by book: ${bookId}`, 'BORROWINGS_CONTROLLER');
-      result = this.borrowingsService.findByBook(Number(bookId));
+      result = await this.borrowingsService.findByBook(Number(bookId));
     } else {
-      result = this.borrowingsService.findAll();
+      result = await this.borrowingsService.findAll();
     }
 
     this.logger.verbose(`Returning ${result.length} borrowings`, 'BORROWINGS_CONTROLLER', {
@@ -107,12 +107,12 @@ export class BorrowingsController {
     type: BorrowingResponseDto,
   })
   @ApiResponse({ status: 404, description: 'Borrowing not found.' })
-  findOne(@Param('id') id: string) {
+  async findOne(@Param('id') id: string) {
     this.logger.debug(`GET /borrowings/${id} - Fetching borrowing`, 'BORROWINGS_CONTROLLER', {
       borrowingId: id,
     });
     try {
-      const borrowing = this.borrowingsService.findOne(+id);
+      const borrowing = await this.borrowingsService.findOne(+id);
       this.logger.verbose('Borrowing retrieved successfully', 'BORROWINGS_CONTROLLER', {
         borrowingId: borrowing.id,
         bookId: borrowing.bookId,

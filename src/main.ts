@@ -1,12 +1,20 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import { NestExpressApplication } from '@nestjs/platform-express';
+import { join } from 'path';
 import { AppModule } from './app.module';
 import { LoggerService } from './common/logger/logger.service';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, {
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     logger: false, // Disable default NestJS logger to use our custom logger
+  });
+
+  // Serve static files from public directory (works in both dev and prod)
+  const publicPath = join(__dirname, '..', 'public');
+  app.useStaticAssets(publicPath, {
+    prefix: '/',
   });
 
   const logger = app.get(LoggerService);
@@ -31,7 +39,9 @@ async function bootstrap() {
   // Swagger configuration
   const config = new DocumentBuilder()
     .setTitle('Library Management API')
-    .setDescription('A comprehensive API for managing a library system with books, authors, and borrowing operations')
+    .setDescription(
+      'A comprehensive API for managing a library system with books, authors, and borrowing operations',
+    )
     .setVersion('1.0')
     .addTag('books', 'Book management endpoints')
     .addTag('authors', 'Author management endpoints')
@@ -44,15 +54,9 @@ async function bootstrap() {
 
   const port = process.env.PORT || 3000;
   await app.listen(port);
-  
-  logger.info(
-    `Application is running on: http://localhost:${port}`,
-    'BOOTSTRAP',
-  );
-  logger.info(
-    `Swagger documentation available at: http://localhost:${port}/api`,
-    'BOOTSTRAP',
-  );
+
+  logger.info(`Application is running on: http://localhost:${port}`, 'BOOTSTRAP');
+  logger.info(`Swagger documentation available at: http://localhost:${port}/api`, 'BOOTSTRAP');
   logger.verbose('Application bootstrap completed successfully', 'BOOTSTRAP', {
     port,
     timestamp: new Date().toISOString(),
@@ -63,4 +67,3 @@ bootstrap().catch((error) => {
   console.error('Failed to start application:', error);
   process.exit(1);
 });
-

@@ -1,4 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { Borrowing } from './entities/borrowing.entity';
 import { CreateBorrowingDto } from './dto/create-borrowing.dto';
 import { BooksService } from '../books/books.service';
@@ -6,17 +8,19 @@ import { LoggerService } from '../common/logger/logger.service';
 
 @Injectable()
 export class BorrowingsService {
-  private borrowings: Borrowing[] = [];
-  private nextId = 1;
   private readonly DEFAULT_BORROW_DAYS = 14;
 
   constructor(
+    @InjectRepository(Borrowing)
+    private readonly borrowingRepository: Repository<Borrowing>,
     private readonly booksService: BooksService,
     private readonly logger: LoggerService,
   ) {
     this.logger.info('BorrowingsService initialized', 'BORROWINGS_SERVICE');
-    // Start checking for overdue books periodically
-    this.startOverdueCheck();
+    // Start checking for overdue books periodically (with delay to allow DB initialization)
+    setTimeout(() => {
+      this.startOverdueCheck();
+    }, 5000); // Wait 5 seconds for database to be ready
   }
 
   async borrow(createBorrowingDto: CreateBorrowingDto): Promise<Borrowing> {
@@ -28,7 +32,7 @@ export class BorrowingsService {
     // Check if book exists
     let book;
     try {
-      book = this.booksService.findOne(createBorrowingDto.bookId);
+      book = await this.booksService.findOne(createBorrowingDto.bookId);
     } catch (error) {
       this.logger.error(
         `Book not found for borrowing: ${createBorrowingDto.bookId}`,
@@ -50,11 +54,13 @@ export class BorrowingsService {
     }
 
     // Check if borrower already has this book borrowed
-    const existingBorrowing = this.borrowings.find(
-      b => b.bookId === createBorrowingDto.bookId &&
-           b.borrowerEmail === createBorrowingDto.borrowerEmail &&
-           b.status === 'BORROWED'
-    );
+    const existingBorrowing = await this.borrowingRepository.findOne({
+      where: {
+        bookId: createBorrowingDto.bookId,
+        borrowerEmail: createBorrowingDto.borrowerEmail,
+        status: 'BORROWED',
+      },
+    });
 
     if (existingBorrowing) {
       this.logger.warn('Attempted to borrow already borrowed book', 'BORROWINGS_SERVICE', {
@@ -70,50 +76,48 @@ export class BorrowingsService {
     const dueDate = new Date();
     dueDate.setDate(dueDate.getDate() + borrowDays);
 
-    const borrowing: Borrowing = {
-      id: this.nextId++,
+    const borrowing = this.borrowingRepository.create({
       ...createBorrowingDto,
       borrowedDate,
       dueDate,
-      status: 'BORROWED',
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
+      status: 'BORROWED' as const,
+    });
 
-    this.borrowings.push(borrowing);
+    const savedBorrowing = await this.borrowingRepository.save(borrowing);
 
     // Mark book as unavailable
-    this.booksService.update(book.id, { available: false });
+    await this.booksService.update(book.id, { available: false });
 
     this.logger.info('Book borrowed successfully', 'BORROWINGS_SERVICE', {
-      borrowingId: borrowing.id,
+      borrowingId: savedBorrowing.id,
       bookId: book.id,
       bookTitle: book.title,
-      borrowerEmail: borrowing.borrowerEmail,
+      borrowerEmail: savedBorrowing.borrowerEmail,
       dueDate: dueDate.toISOString(),
     });
     this.logger.logBusinessEvent('BOOK_BORROWED', {
-      borrowingId: borrowing.id,
+      borrowingId: savedBorrowing.id,
       bookId: book.id,
-      borrowerEmail: borrowing.borrowerEmail,
+      borrowerEmail: savedBorrowing.borrowerEmail,
       dueDate: dueDate.toISOString(),
     });
 
-    return borrowing;
+    return savedBorrowing;
   }
 
-  findAll(): Borrowing[] {
+  async findAll(): Promise<Borrowing[]> {
+    const borrowings = await this.borrowingRepository.find();
     this.logger.debug('Fetching all borrowings', 'BORROWINGS_SERVICE', {
-      totalBorrowings: this.borrowings.length,
+      totalBorrowings: borrowings.length,
     });
-    return this.borrowings;
+    return borrowings;
   }
 
-  findOne(id: number): Borrowing {
+  async findOne(id: number): Promise<Borrowing> {
     this.logger.debug(`Fetching borrowing with ID: ${id}`, 'BORROWINGS_SERVICE', {
       borrowingId: id,
     });
-    const borrowing = this.borrowings.find(b => b.id === id);
+    const borrowing = await this.borrowingRepository.findOne({ where: { id } });
     if (!borrowing) {
       this.logger.warn(`Borrowing not found: ${id}`, 'BORROWINGS_SERVICE', {
         borrowingId: id,
@@ -123,11 +127,13 @@ export class BorrowingsService {
     return borrowing;
   }
 
-  findByBorrower(email: string): Borrowing[] {
+  async findByBorrower(email: string): Promise<Borrowing[]> {
     this.logger.debug(`Fetching borrowings for borrower: ${email}`, 'BORROWINGS_SERVICE', {
       borrowerEmail: email,
     });
-    const borrowings = this.borrowings.filter(b => b.borrowerEmail === email);
+    const borrowings = await this.borrowingRepository.find({
+      where: { borrowerEmail: email },
+    });
     this.logger.info(`Found ${borrowings.length} borrowings for ${email}`, 'BORROWINGS_SERVICE', {
       borrowerEmail: email,
       count: borrowings.length,
@@ -135,11 +141,13 @@ export class BorrowingsService {
     return borrowings;
   }
 
-  findByBook(bookId: number): Borrowing[] {
+  async findByBook(bookId: number): Promise<Borrowing[]> {
     this.logger.debug(`Fetching borrowings for book: ${bookId}`, 'BORROWINGS_SERVICE', {
       bookId,
     });
-    const borrowings = this.borrowings.filter(b => b.bookId === bookId);
+    const borrowings = await this.borrowingRepository.find({
+      where: { bookId },
+    });
     this.logger.verbose(`Found ${borrowings.length} borrowings for book ${bookId}`, 'BORROWINGS_SERVICE', {
       bookId,
       count: borrowings.length,
@@ -152,7 +160,7 @@ export class BorrowingsService {
       borrowingId: id,
     });
 
-    const borrowing = this.findOne(id);
+    const borrowing = await this.findOne(id);
 
     if (borrowing.status === 'RETURNED') {
       this.logger.warn('Attempted to return already returned book', 'BORROWINGS_SERVICE', {
@@ -167,12 +175,12 @@ export class BorrowingsService {
 
     borrowing.status = 'RETURNED';
     borrowing.returnedDate = returnedDate;
-    borrowing.updatedAt = new Date();
+    const updatedBorrowing = await this.borrowingRepository.save(borrowing);
 
     // Mark book as available
     try {
-      const book = this.booksService.findOne(borrowing.bookId);
-      this.booksService.update(book.id, { available: true });
+      const book = await this.booksService.findOne(borrowing.bookId);
+      await this.booksService.update(book.id, { available: true });
       this.logger.debug('Book marked as available', 'BORROWINGS_SERVICE', {
         bookId: book.id,
       });
@@ -201,7 +209,7 @@ export class BorrowingsService {
       wasOverdue,
     });
 
-    return borrowing;
+    return updatedBorrowing;
   }
 
   private startOverdueCheck(): void {
@@ -214,35 +222,44 @@ export class BorrowingsService {
     this.checkOverdueBooks();
   }
 
-  private checkOverdueBooks(): void {
-    this.logger.debug('Checking for overdue books', 'BORROWINGS_SERVICE');
-    const now = new Date();
-    let overdueCount = 0;
-
-    this.borrowings.forEach(borrowing => {
-      if (borrowing.status === 'BORROWED' && now > borrowing.dueDate) {
-        borrowing.status = 'OVERDUE';
-        borrowing.updatedAt = new Date();
-        overdueCount++;
-
-        this.logger.warn('Book marked as overdue', 'BORROWINGS_SERVICE', {
-          borrowingId: borrowing.id,
-          bookId: borrowing.bookId,
-          borrowerEmail: borrowing.borrowerEmail,
-          dueDate: borrowing.dueDate.toISOString(),
-          daysOverdue: Math.floor(
-            (now.getTime() - borrowing.dueDate.getTime()) / (1000 * 60 * 60 * 24)
-          ),
-        });
-      }
-    });
-
-    if (overdueCount > 0) {
-      this.logger.warn(`Found ${overdueCount} overdue book(s)`, 'BORROWINGS_SERVICE', {
-        overdueCount,
+  private async checkOverdueBooks(): Promise<void> {
+    try {
+      this.logger.debug('Checking for overdue books', 'BORROWINGS_SERVICE');
+      const now = new Date();
+      
+      const borrowedBooks = await this.borrowingRepository.find({
+        where: { status: 'BORROWED' },
       });
-    } else {
-      this.logger.verbose('No overdue books found', 'BORROWINGS_SERVICE');
+
+      let overdueCount = 0;
+      for (const borrowing of borrowedBooks) {
+        if (now > borrowing.dueDate) {
+          borrowing.status = 'OVERDUE';
+          await this.borrowingRepository.save(borrowing);
+          overdueCount++;
+
+          this.logger.warn('Book marked as overdue', 'BORROWINGS_SERVICE', {
+            borrowingId: borrowing.id,
+            bookId: borrowing.bookId,
+            borrowerEmail: borrowing.borrowerEmail,
+            dueDate: borrowing.dueDate.toISOString(),
+            daysOverdue: Math.floor(
+              (now.getTime() - borrowing.dueDate.getTime()) / (1000 * 60 * 60 * 24)
+            ),
+          });
+        }
+      }
+
+      if (overdueCount > 0) {
+        this.logger.warn(`Found ${overdueCount} overdue book(s)`, 'BORROWINGS_SERVICE', {
+          overdueCount,
+        });
+      } else {
+        this.logger.verbose('No overdue books found', 'BORROWINGS_SERVICE');
+      }
+    } catch (error) {
+      // Silently handle errors (e.g., tables not created yet)
+      this.logger.debug('Could not check overdue books (tables may not exist yet)', 'BORROWINGS_SERVICE');
     }
   }
 }

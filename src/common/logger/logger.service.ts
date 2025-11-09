@@ -1,25 +1,18 @@
 import { Injectable } from '@nestjs/common';
-// Import common-sense-logger - try different import patterns
-let LoggerClass: any;
-try {
-  LoggerClass = require('common-sense-logger').Logger || require('common-sense-logger').default || require('common-sense-logger');
-} catch (e) {
-  LoggerClass = null;
-}
+import { Logger } from 'common-sense-logger';
 
 @Injectable()
 export class LoggerService {
   private loggerInstance: any;
 
   constructor() {
-    // Initialize the logger instance if available
-    if (LoggerClass) {
-      try {
-        this.loggerInstance = typeof LoggerClass === 'function' ? new LoggerClass() : LoggerClass;
-      } catch (e) {
-        this.loggerInstance = null;
-      }
-    } else {
+    // Initialize the logger instance with config
+    try {
+      this.loggerInstance = new Logger({
+        serviceName: 'nestjs-api-demo',
+      });
+    } catch (e) {
+      // Fallback to null if initialization fails
       this.loggerInstance = null;
     }
   }
@@ -168,4 +161,3 @@ export class LoggerService {
     this.info(`Business event: ${event}`, 'BUSINESS', details);
   }
 }
-

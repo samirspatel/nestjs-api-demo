@@ -1,6 +1,6 @@
 # NestJS API Demo - Library Management System
 
-A comprehensive NestJS API demo application featuring a library management system with complete Swagger documentation and comprehensive logging using `common-sense-logger`.
+A comprehensive NestJS API demo application featuring a library management system with complete Swagger documentation, comprehensive logging using `common-sense-logger`, a full-featured web UI, and PostgreSQL database with TypeORM.
 
 ## Features
 
@@ -9,72 +9,159 @@ A comprehensive NestJS API demo application featuring a library management syste
 - **Borrowing System** - Borrow and return books with automatic availability tracking
 - **Swagger Documentation** - Interactive API documentation at `/api`
 - **Comprehensive Logging** - Detailed logging throughout the application using `common-sense-logger`
+- **PostgreSQL Database** - Persistent data storage with TypeORM
+- **Docker Support** - Complete Docker Compose setup with PostgreSQL
+- **Web UI** - Full-featured web interface for managing the library
 - **Input Validation** - Request validation using class-validator
 - **TypeScript** - Fully typed with TypeScript
 
-## Logging Examples
+## Quick Start with Docker
 
-This application demonstrates comprehensive logging with `common-sense-logger`:
-
-### Log Levels Used
-
-1. **INFO** - General operational messages
-   - Application startup
-   - Successful operations (create, update, delete)
-   - Business events
-
-2. **DEBUG** - Detailed diagnostic information
-   - Service method entry/exit
-   - Query parameters and filters
-   - Data retrieval operations
-
-3. **WARN** - Warning messages
-   - Duplicate ISBN attempts
-   - Not found resources
-   - Overdue books
-   - Unavailable book borrowing attempts
-
-4. **ERROR** - Error events
-   - Failed operations with stack traces
-   - Exception handling
-   - Error context and metadata
-
-5. **VERBOSE** - Very detailed information
-   - Detailed operation results
-   - Before/after state comparisons
-   - Low-level operation details
-
-### Logging Contexts
-
-Logs are organized by context for easy filtering:
-- `BOOTSTRAP` - Application initialization
-- `HTTP_REQUEST` - Incoming HTTP requests
-- `HTTP_RESPONSE` - HTTP responses
-- `HTTP_ERROR` - HTTP errors
-- `BOOKS_SERVICE` - Books service operations
-- `BOOKS_CONTROLLER` - Books controller operations
-- `AUTHORS_SERVICE` - Authors service operations
-- `AUTHORS_CONTROLLER` - Authors controller operations
-- `BORROWINGS_SERVICE` - Borrowings service operations
-- `BORROWINGS_CONTROLLER` - Borrowings controller operations
-- `BUSINESS` - Business logic events
-- `DATABASE` - Database operations (if applicable)
-
-## Installation
+The easiest way to run the application is using Docker Compose. A Makefile is provided for convenience:
 
 ```bash
-# Install dependencies
-npm install
+# Build and start all services
+make build
+make up
 
-# Start development server
-npm run start:dev
+# Seed the database with dummy data
+make seed
 
-# Build for production
-npm run build
-
-# Start production server
-npm run start:prod
+# View logs
+make logs-follow
 ```
+
+Or use Docker Compose directly:
+
+```bash
+# Start PostgreSQL and the application
+docker-compose up -d
+
+# Seed the database with dummy data
+docker-compose exec app npm run seed
+
+# View logs
+docker-compose logs -f app
+```
+
+The application will be available at:
+- **Web UI**: http://localhost:3000
+- **Swagger API**: http://localhost:3000/api
+
+### Makefile Commands
+
+The project includes a Makefile with common Docker operations:
+
+- `make build` - Build Docker images
+- `make up` - Start all services
+- `make down` - Stop all services
+- `make restart` - Restart all services
+- `make logs` - View application logs
+- `make logs-follow` - Follow application logs
+- `make shell` - Access app container shell
+- `make db-shell` - Access PostgreSQL shell
+- `make seed` - Seed the database with dummy data
+- `make clean` - Stop and remove containers, networks, volumes
+- `make rebuild` - Rebuild and restart all services
+- `make ps` - Show running containers
+
+See `make help` for all available commands.
+
+## Local Development Setup
+
+### Prerequisites
+
+- Node.js 20+
+- PostgreSQL 15+ (or use Docker Compose)
+- npm or yarn
+
+### Installation
+
+1. **Clone and install dependencies:**
+   ```bash
+   npm install
+   ```
+
+2. **Start PostgreSQL** (if not using Docker):
+   ```bash
+   # Using Docker Compose (recommended)
+   docker-compose up -d postgres
+   ```
+
+3. **Set up environment variables** (optional, defaults are provided):
+   ```bash
+   export DATABASE_HOST=localhost
+   export DATABASE_PORT=5432
+   export DATABASE_USER=library_user
+   export DATABASE_PASSWORD=library_password
+   export DATABASE_NAME=library_db
+   ```
+
+4. **Start the application:**
+   ```bash
+   npm run start:dev
+   ```
+
+5. **Seed the database** (in a new terminal):
+   ```bash
+   npm run seed
+   ```
+
+## Database Setup
+
+The application uses PostgreSQL with TypeORM. The database schema is automatically synchronized in development mode.
+
+### Seed Data
+
+The seed script populates the database with:
+- 8 authors (F. Scott Fitzgerald, Jane Austen, George Orwell, J.K. Rowling, etc.)
+- 12 books (The Great Gatsby, 1984, Harry Potter series, etc.)
+- 3 sample borrowings (including one overdue book)
+
+Run the seed script:
+```bash
+npm run seed
+```
+
+## Docker Commands
+
+```bash
+# Start all services
+docker-compose up -d
+
+# Stop all services
+docker-compose down
+
+# View logs
+docker-compose logs -f
+
+# Rebuild and restart
+docker-compose up -d --build
+
+# Access PostgreSQL
+docker-compose exec postgres psql -U library_user -d library_db
+
+# Run seed script
+docker-compose exec app npm run seed
+
+# Stop and remove volumes (clears database)
+docker-compose down -v
+```
+
+## Web UI
+
+The application includes a complete web-based user interface accessible at the root URL:
+
+- **Web UI**: http://localhost:3000
+- **Swagger Documentation**: http://localhost:3000/api
+- **API Base URL**: http://localhost:3000
+
+The web UI provides:
+- **Books Management**: View, create, edit, and delete books with filtering by author, genre, and availability
+- **Authors Management**: View, create, edit, and delete authors
+- **Borrowing System**: Borrow and return books, view borrowing history, and track overdue books
+- **Real-time Updates**: All changes are immediately reflected across the interface
+- **Responsive Design**: Works seamlessly on desktop and mobile devices
 
 ## API Endpoints
 
@@ -101,133 +188,19 @@ npm run start:prod
 - `POST /borrowings` - Borrow a book
 - `PATCH /borrowings/:id/return` - Return a borrowed book
 
-## Swagger Documentation
-
-Once the application is running, visit:
-- **Swagger UI**: http://localhost:3000/api
-- **API Base URL**: http://localhost:3000
-
-## Example API Requests
-
-### Create an Author
-
-```bash
-curl -X POST http://localhost:3000/authors \
-  -H "Content-Type: application/json" \
-  -d '{
-    "firstName": "F. Scott",
-    "lastName": "Fitzgerald",
-    "dateOfBirth": "1896-09-24",
-    "nationality": "American",
-    "biography": "Francis Scott Key Fitzgerald was an American novelist..."
-  }'
-```
-
-### Create a Book
-
-```bash
-curl -X POST http://localhost:3000/books \
-  -H "Content-Type: application/json" \
-  -d '{
-    "title": "The Great Gatsby",
-    "isbn": "978-0-7432-7356-5",
-    "authorId": 1,
-    "publishedYear": 1925,
-    "genre": "Fiction",
-    "available": true
-  }'
-```
-
-### Borrow a Book
-
-```bash
-curl -X POST http://localhost:3000/borrowings \
-  -H "Content-Type: application/json" \
-  -d '{
-    "bookId": 1,
-    "borrowerName": "John Doe",
-    "borrowerEmail": "john.doe@example.com",
-    "borrowDays": 14
-  }'
-```
-
-### Return a Book
-
-```bash
-curl -X PATCH http://localhost:3000/borrowings/1/return
-```
-
-## Logging Examples in Code
-
-### Service Layer Logging
-
-```typescript
-// Info log for successful operations
-this.logger.info('Book created successfully', 'BOOKS_SERVICE', {
-  bookId: book.id,
-  title: book.title,
-});
-
-// Debug log for detailed operations
-this.logger.debug('Fetching book with ID: ${id}', 'BOOKS_SERVICE', { bookId: id });
-
-// Warn log for potential issues
-this.logger.warn('Book not found: ${id}', 'BOOKS_SERVICE', { bookId: id });
-
-// Error log with stack trace
-this.logger.error(
-  'Failed to create book',
-  error.stack,
-  'BOOKS_SERVICE',
-  { createBookDto }
-);
-```
-
-### Controller Layer Logging
-
-```typescript
-// Log incoming requests
-this.logger.info('POST /books - Creating new book', 'BOOKS_CONTROLLER', {
-  title: createBookDto.title,
-  isbn: createBookDto.isbn,
-});
-
-// Log successful responses
-this.logger.info('Book creation successful', 'BOOKS_CONTROLLER', {
-  bookId: book.id,
-});
-```
-
-### Business Event Logging
-
-```typescript
-// Log business events
-this.logger.logBusinessEvent('BOOK_CREATED', {
-  bookId: book.id,
-  title: book.title,
-});
-```
-
-### HTTP Request/Response Logging
-
-The application includes a global `LoggingInterceptor` that automatically logs:
-- Incoming HTTP requests (method, URL, query params, body)
-- Response times
-- Response status codes
-- Errors with stack traces
-
 ## Project Structure
 
 ```
 src/
-├── app.module.ts              # Root module
-├── main.ts                    # Application entry point with Swagger setup
+├── app.module.ts              # Root module with TypeORM configuration
+├── app.controller.ts          # Root controller for serving UI
+├── main.ts                    # Application entry point
 ├── books/                     # Books module
-│   ├── books.controller.ts   # Books controller with Swagger decorators
-│   ├── books.service.ts       # Books service with logging
+│   ├── books.controller.ts   # Books controller
+│   ├── books.service.ts       # Books service with TypeORM
 │   ├── books.module.ts
 │   ├── dto/                   # Data Transfer Objects
-│   └── entities/              # Book entity
+│   └── entities/              # Book entity (TypeORM)
 ├── authors/                   # Authors module
 │   ├── authors.controller.ts
 │   ├── authors.service.ts
@@ -240,19 +213,25 @@ src/
 │   ├── borrowings.module.ts
 │   ├── dto/
 │   └── entities/
-└── common/                    # Shared modules
-    ├── logger/                # Logger service and module
-    │   ├── logger.service.ts
-    │   └── logger.module.ts
-    └── interceptors/          # Global interceptors
-        └── logging.interceptor.ts
+├── common/                    # Shared modules
+│   ├── logger/                # Logger service
+│   └── interceptors/          # HTTP logging interceptor
+└── database/                  # Database utilities
+    └── seed.ts                # Seed script for dummy data
+public/                        # Static files (UI)
+├── index.html
+├── styles.css
+└── app.js
 ```
 
 ## Technologies Used
 
 - **NestJS** - Progressive Node.js framework
+- **TypeORM** - Object-Relational Mapping
+- **PostgreSQL** - Relational database
 - **Swagger/OpenAPI** - API documentation
 - **common-sense-logger** - Logging library
+- **Docker & Docker Compose** - Containerization
 - **class-validator** - Validation decorators
 - **class-transformer** - Object transformation
 - **TypeScript** - Type-safe JavaScript
@@ -260,7 +239,7 @@ src/
 ## Development
 
 ```bash
-# Watch mode
+# Development mode with hot reload
 npm run start:dev
 
 # Debug mode
@@ -269,9 +248,29 @@ npm run start:debug
 # Production build
 npm run build
 npm run start:prod
+
+# Run seed script
+npm run seed
+
+# Lint code
+npm run lint
+
+# Format code
+npm run format
 ```
+
+## Environment Variables
+
+The following environment variables can be configured:
+
+- `DATABASE_HOST` - PostgreSQL host (default: localhost)
+- `DATABASE_PORT` - PostgreSQL port (default: 5432)
+- `DATABASE_USER` - PostgreSQL user (default: library_user)
+- `DATABASE_PASSWORD` - PostgreSQL password (default: library_password)
+- `DATABASE_NAME` - PostgreSQL database name (default: library_db)
+- `NODE_ENV` - Environment (development/production)
+- `PORT` - Application port (default: 3000)
 
 ## License
 
 MIT
-
