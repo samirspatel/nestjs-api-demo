@@ -172,7 +172,7 @@ Once the application is running, visit **http://localhost:3000/api** for interac
 - `DELETE /authors/:id` - Delete an author
 
 **Borrowings**
-- `GET /borrowings` - List all borrowings (supports `?borrowerEmail`, `?bookId` filters)
+- `GET /borrowings` - List all borrowings (supports `?bookId` filter)
 - `GET /borrowings/:id` - Get a specific borrowing
 - `POST /borrowings` - Borrow a book
 - `PATCH /borrowings/:id/return` - Return a borrowed book

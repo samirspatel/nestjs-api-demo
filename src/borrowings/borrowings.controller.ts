@@ -47,7 +47,7 @@ export class BorrowingsController {
   async borrow(@Body() createBorrowingDto: CreateBorrowingDto) {
     this.logger.info('[BORROWINGS_CONTROLLER] POST /borrowings - Borrowing book', {
       bookId: createBorrowingDto.bookId,
-      borrowerEmail: createBorrowingDto.borrowerEmail,
+      borrowerName: createBorrowingDto.borrowerName,
     });
     try {
       const borrowing = await this.borrowingsService.borrow(createBorrowingDto);
@@ -66,7 +66,6 @@ export class BorrowingsController {
 
   @Get()
   @ApiOperation({ summary: 'Get all borrowings' })
-  @ApiQuery({ name: 'borrowerEmail', required: false, type: String, description: 'Filter by borrower email' })
   @ApiQuery({ name: 'bookId', required: false, type: Number, description: 'Filter by book ID' })
   @ApiResponse({
     status: 200,
@@ -74,18 +73,14 @@ export class BorrowingsController {
     type: [BorrowingResponseDto],
   })
   async findAll(
-    @Query('borrowerEmail') borrowerEmail?: string,
     @Query('bookId') bookId?: string,
   ) {
     this.logger.debug('[BORROWINGS_CONTROLLER] GET /borrowings - Fetching borrowings', {
-      filters: { borrowerEmail, bookId },
+      filters: { bookId },
     });
 
     let result;
-    if (borrowerEmail) {
-      this.logger.info(`[BORROWINGS_CONTROLLER] Filtering borrowings by borrower: ${borrowerEmail}`);
-      result = await this.borrowingsService.findByBorrower(borrowerEmail);
-    } else if (bookId) {
+    if (bookId) {
       this.logger.info(`[BORROWINGS_CONTROLLER] Filtering borrowings by book: ${bookId}`);
       result = await this.borrowingsService.findByBook(Number(bookId));
     } else {

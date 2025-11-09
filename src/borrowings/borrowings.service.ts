@@ -27,7 +27,7 @@ export class BorrowingsService {
   async borrow(createBorrowingDto: CreateBorrowingDto): Promise<Borrowing> {
     this.logger.info('[BORROWINGS_SERVICE] Processing book borrowing request', {
       bookId: createBorrowingDto.bookId,
-      borrowerEmail: createBorrowingDto.borrowerEmail,
+      borrowerName: createBorrowingDto.borrowerName,
     });
 
     // Check if book exists
@@ -50,27 +50,9 @@ export class BorrowingsService {
       this.logger.warn('[BORROWINGS_SERVICE] Attempted to borrow unavailable book', {
         bookId: book.id,
         title: book.title,
-        borrowerEmail: createBorrowingDto.borrowerEmail,
+        borrowerName: createBorrowingDto.borrowerName,
       });
       throw new BadRequestException(`Book "${book.title}" is not available for borrowing`);
-    }
-
-    // Check if borrower already has this book borrowed
-    const existingBorrowing = await this.borrowingRepository.findOne({
-      where: {
-        bookId: createBorrowingDto.bookId,
-        borrowerEmail: createBorrowingDto.borrowerEmail,
-        status: 'BORROWED',
-      },
-    });
-
-    if (existingBorrowing) {
-      this.logger.warn('[BORROWINGS_SERVICE] Attempted to borrow already borrowed book', {
-        bookId: createBorrowingDto.bookId,
-        borrowerEmail: createBorrowingDto.borrowerEmail,
-        existingBorrowingId: existingBorrowing.id,
-      });
-      throw new BadRequestException('You have already borrowed this book');
     }
 
     const borrowDays = createBorrowingDto.borrowDays || this.DEFAULT_BORROW_DAYS;
@@ -94,13 +76,13 @@ export class BorrowingsService {
       borrowingId: savedBorrowing.id,
       bookId: book.id,
       bookTitle: book.title,
-      borrowerEmail: savedBorrowing.borrowerEmail,
+      borrowerName: savedBorrowing.borrowerName,
       dueDate: dueDate.toISOString(),
     });
     this.logger.info('[BUSINESS_EVENT] BOOK_BORROWED', {
       borrowingId: savedBorrowing.id,
       bookId: book.id,
-      borrowerEmail: savedBorrowing.borrowerEmail,
+      borrowerName: savedBorrowing.borrowerName,
       dueDate: dueDate.toISOString(),
     });
 
@@ -129,19 +111,6 @@ export class BorrowingsService {
     return borrowing;
   }
 
-  async findByBorrower(email: string): Promise<Borrowing[]> {
-    this.logger.debug(`[BORROWINGS_SERVICE] Fetching borrowings for borrower: ${email}`, {
-      borrowerEmail: email,
-    });
-    const borrowings = await this.borrowingRepository.find({
-      where: { borrowerEmail: email },
-    });
-    this.logger.info(`[BORROWINGS_SERVICE] Found ${borrowings.length} borrowings for ${email}`, {
-      borrowerEmail: email,
-      count: borrowings.length,
-    });
-    return borrowings;
-  }
 
   async findByBook(bookId: number): Promise<Borrowing[]> {
     this.logger.debug(`[BORROWINGS_SERVICE] Fetching borrowings for book: ${bookId}`, {
@@ -199,7 +168,7 @@ export class BorrowingsService {
     this.logger.info('[BORROWINGS_SERVICE] Book returned successfully', {
       borrowingId: id,
       bookId: borrowing.bookId,
-      borrowerEmail: borrowing.borrowerEmail,
+      borrowerName: borrowing.borrowerName,
       wasOverdue,
       daysLate: wasOverdue
         ? Math.floor((returnedDate.getTime() - borrowing.dueDate.getTime()) / (1000 * 60 * 60 * 24))
@@ -208,7 +177,7 @@ export class BorrowingsService {
     this.logger.info('[BUSINESS_EVENT] BOOK_RETURNED', {
       borrowingId: id,
       bookId: borrowing.bookId,
-      borrowerEmail: borrowing.borrowerEmail,
+      borrowerName: borrowing.borrowerName,
       wasOverdue,
     });
 
@@ -244,7 +213,7 @@ export class BorrowingsService {
           this.logger.warn('[BORROWINGS_SERVICE] Book marked as overdue', {
             borrowingId: borrowing.id,
             bookId: borrowing.bookId,
-            borrowerEmail: borrowing.borrowerEmail,
+            borrowerName: borrowing.borrowerName,
             dueDate: borrowing.dueDate.toISOString(),
             daysOverdue: Math.floor(
               (now.getTime() - borrowing.dueDate.getTime()) / (1000 * 60 * 60 * 24)

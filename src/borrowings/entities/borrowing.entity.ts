@@ -16,9 +16,6 @@ export class Borrowing {
   @Column()
   borrowerName: string;
 
-  @Column()
-  borrowerEmail: string;
-
   @Column({ type: 'date' })
   borrowedDate: Date;
 

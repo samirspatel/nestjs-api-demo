@@ -61,6 +61,7 @@
                 </div>
 
                 <div id="books-list" class="cards-grid"></div>
+                <div id="books-pagination" class="pagination"></div>
             </section>
 
             <!-- Authors Tab -->
@@ -83,7 +84,6 @@
                 </div>
                 
                 <div class="filters">
-                    <input type="email" id="borrower-email-filter" placeholder="Filter by borrower email..." onkeyup="filterBorrowings()">
                     <select id="borrowing-book-filter" onchange="filterBorrowings()">
                         <option value="">All Books</option>
                     </select>
@@ -95,7 +95,7 @@
                     </select>
                 </div>
 
-                <div id="borrowings-list" class="cards-grid"></div>
+                <div id="borrowings-list" class="table-container"></div>
             </section>
         </main>
     </div>
@@ -187,10 +187,6 @@
                 <div class="form-group">
                     <label for="borrower-name">Borrower Name *</label>
                     <input type="text" id="borrower-name" required>
-                </div>
-                <div class="form-group">
-                    <label for="borrower-email">Borrower Email *</label>
-                    <input type="email" id="borrower-email" required>
                 </div>
                 <div class="form-group">
                     <label for="borrow-days">Borrow Days *</label>

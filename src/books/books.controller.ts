@@ -59,7 +59,7 @@ export class BooksController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'Get all books' })
+  @ApiOperation({ summary: 'Get all books with pagination' })
   @ApiQuery({ name: 'authorId', required: false, type: Number, description: 'Filter by author ID' })
   @ApiQuery({ name: 'genre', required: false, type: String, description: 'Filter by genre' })
   @ApiQuery({
@@ -68,36 +68,65 @@ export class BooksController {
     type: Boolean,
     description: 'Filter by availability',
   })
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    type: Number,
+    description: 'Page number (default: 1)',
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    type: Number,
+    description: 'Items per page (default: 20)',
+  })
   @ApiResponse({
     status: 200,
-    description: 'List of all books',
-    type: [BookResponseDto],
+    description: 'Paginated list of books',
+    schema: {
+      type: 'object',
+      properties: {
+        data: { type: 'array', items: { $ref: '#/components/schemas/BookResponseDto' } },
+        total: { type: 'number' },
+        page: { type: 'number' },
+        limit: { type: 'number' },
+        totalPages: { type: 'number' },
+      },
+    },
   })
   async findAll(
     @Query('authorId') authorId?: string,
     @Query('genre') genre?: string,
     @Query('available') available?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
   ) {
+    const pageNum = page ? Math.max(1, parseInt(page, 10)) : 1;
+    const limitNum = limit ? Math.max(1, Math.min(100, parseInt(limit, 10))) : 20;
+
     this.logger.debug('[BOOKS_CONTROLLER] GET /books - Fetching books', {
       filters: { authorId, genre, available },
+      pagination: { page: pageNum, limit: limitNum },
     });
 
     let result;
     if (authorId) {
       this.logger.info(`[BOOKS_CONTROLLER] Filtering books by author: ${authorId}`);
-      result = await this.booksService.findByAuthor(Number(authorId));
+      result = await this.booksService.findByAuthor(Number(authorId), pageNum, limitNum);
     } else if (genre) {
       this.logger.info(`[BOOKS_CONTROLLER] Filtering books by genre: ${genre}`);
-      result = await this.booksService.findByGenre(genre);
+      result = await this.booksService.findByGenre(genre, pageNum, limitNum);
     } else if (available === 'true') {
       this.logger.info('[BOOKS_CONTROLLER] Filtering available books');
-      result = await this.booksService.findAvailable();
+      result = await this.booksService.findAvailable(pageNum, limitNum);
     } else {
-      result = await this.booksService.findAll();
+      result = await this.booksService.findAll(pageNum, limitNum);
     }
 
-    this.logger.debug(`[BOOKS_CONTROLLER] Returning ${result.length} books`, {
-      count: result.length,
+    this.logger.debug(`[BOOKS_CONTROLLER] Returning ${result.data.length} books`, {
+      total: result.total,
+      page: result.page,
+      totalPages: result.totalPages,
     });
     return result;
   }

@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, IsEmail, IsNumber, Min } from 'class-validator';
+import { IsString, IsNotEmpty, IsNumber, Min } from 'class-validator';
 
 export class CreateBorrowingDto {
   @ApiProperty({
@@ -18,14 +18,6 @@ export class CreateBorrowingDto {
   @IsString()
   @IsNotEmpty()
   borrowerName: string;
-
-  @ApiProperty({
-    description: 'Email of the borrower',
-    example: 'john.doe@example.com',
-  })
-  @IsEmail()
-  @IsNotEmpty()
-  borrowerEmail: string;
 
   @ApiProperty({
     description: 'Number of days to borrow the book',

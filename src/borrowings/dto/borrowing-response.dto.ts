@@ -10,9 +10,6 @@ export class BorrowingResponseDto {
   @ApiProperty({ example: 'John Doe', description: 'Name of the borrower' })
   borrowerName: string;
 
-  @ApiProperty({ example: 'john.doe@example.com', description: 'Email of the borrower' })
-  borrowerEmail: string;
-
   @ApiProperty({ description: 'Date when the book was borrowed' })
   borrowedDate: Date;
 

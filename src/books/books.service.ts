@@ -55,13 +55,34 @@ export class BooksService {
     return savedBook;
   }
 
-  async findAll(): Promise<Book[]> {
-    const books = await this.bookRepository.find();
-    this.logger.debug('[BOOKS_SERVICE] Fetching all books', {
-      totalBooks: books.length,
+  async findAll(
+    page: number = 1,
+    limit: number = 20,
+  ): Promise<{ data: Book[]; total: number; page: number; limit: number; totalPages: number }> {
+    const skip = (page - 1) * limit;
+    const [books, total] = await this.bookRepository.findAndCount({
+      skip,
+      take: limit,
+      order: { id: 'ASC' },
     });
-    this.logger.debug(`[BOOKS_SERVICE] Retrieved ${books.length} books`);
-    return books;
+
+    const totalPages = Math.ceil(total / limit);
+
+    this.logger.debug('[BOOKS_SERVICE] Fetching books with pagination', {
+      page,
+      limit,
+      total,
+      totalPages,
+      returned: books.length,
+    });
+
+    return {
+      data: books,
+      total,
+      page,
+      limit,
+      totalPages,
+    };
   }
 
   async findOne(id: number): Promise<Book> {
@@ -78,46 +99,98 @@ export class BooksService {
     return book;
   }
 
-  async findByAuthor(authorId: number): Promise<Book[]> {
-    this.logger.debug(`[BOOKS_SERVICE] Fetching books by author: ${authorId}`, {
-      authorId,
-    });
-    const books = await this.bookRepository.find({
+  async findByAuthor(
+    authorId: number,
+    page: number = 1,
+    limit: number = 20,
+  ): Promise<{ data: Book[]; total: number; page: number; limit: number; totalPages: number }> {
+    const skip = (page - 1) * limit;
+    const [books, total] = await this.bookRepository.findAndCount({
       where: { authorId },
+      skip,
+      take: limit,
+      order: { id: 'ASC' },
     });
+
+    const totalPages = Math.ceil(total / limit);
+
     this.logger.info(`[BOOKS_SERVICE] Found ${books.length} books for author ${authorId}`, {
       authorId,
       count: books.length,
+      total,
+      page,
+      totalPages,
     });
-    return books;
+
+    return {
+      data: books,
+      total,
+      page,
+      limit,
+      totalPages,
+    };
   }
 
-  async findByGenre(genre: string): Promise<Book[]> {
-    this.logger.debug(`[BOOKS_SERVICE] Searching books by genre: ${genre}`, {
-      genre,
-    });
-    const books = await this.bookRepository
+  async findByGenre(
+    genre: string,
+    page: number = 1,
+    limit: number = 20,
+  ): Promise<{ data: Book[]; total: number; page: number; limit: number; totalPages: number }> {
+    const skip = (page - 1) * limit;
+    const queryBuilder = this.bookRepository
       .createQueryBuilder('book')
       .where('LOWER(book.genre) LIKE LOWER(:genre)', { genre: `%${genre}%` })
-      .getMany();
+      .orderBy('book.id', 'ASC');
+
+    const [books, total] = await queryBuilder.skip(skip).take(limit).getManyAndCount();
+
+    const totalPages = Math.ceil(total / limit);
+
     this.logger.info(`[BOOKS_SERVICE] Found ${books.length} books in genre "${genre}"`, {
       genre,
       count: books.length,
+      total,
+      page,
+      totalPages,
     });
-    return books;
+
+    return {
+      data: books,
+      total,
+      page,
+      limit,
+      totalPages,
+    };
   }
 
-  async findAvailable(): Promise<Book[]> {
-    this.logger.debug('[BOOKS_SERVICE] Fetching available books');
-    const books = await this.bookRepository.find({
+  async findAvailable(
+    page: number = 1,
+    limit: number = 20,
+  ): Promise<{ data: Book[]; total: number; page: number; limit: number; totalPages: number }> {
+    const skip = (page - 1) * limit;
+    const [books, total] = await this.bookRepository.findAndCount({
       where: { available: true },
+      skip,
+      take: limit,
+      order: { id: 'ASC' },
     });
-    const totalCount = await this.bookRepository.count();
+
+    const totalPages = Math.ceil(total / limit);
+
     this.logger.info(`[BOOKS_SERVICE] Found ${books.length} available books`, {
       availableCount: books.length,
-      totalCount,
+      total,
+      page,
+      totalPages,
     });
-    return books;
+
+    return {
+      data: books,
+      total,
+      page,
+      limit,
+      totalPages,
+    };
   }
 
   async update(id: number, updateBookDto: UpdateBookDto): Promise<Book> {
@@ -193,4 +266,3 @@ export class BooksService {
     });
   }
 }
-

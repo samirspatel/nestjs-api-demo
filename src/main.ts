@@ -5,6 +5,9 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
 import { AppModule } from './app.module';
 import { Logger } from 'common-sense-logger';
+import { seedDatabase } from './database/seed';
+import { DataSource } from 'typeorm';
+import { getConnectionToken } from '@nestjs/typeorm';
 
 const logger = new Logger({
   serviceName: 'nestjs-api-demo',
@@ -53,6 +56,23 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, document);
   logger.info('[BOOTSTRAP] Swagger documentation configured at /api');
+
+  // Run seed on startup if enabled
+  const shouldSeedOnStartup =
+    process.env.SEED_ON_STARTUP === 'true' || process.env.NODE_ENV === 'development';
+  if (shouldSeedOnStartup) {
+    try {
+      logger.info('[BOOTSTRAP] Running database seed on startup...');
+      // Get the DataSource from NestJS TypeORM module
+      // For TypeORM 0.3.x, we use getConnectionToken which returns DataSource
+      const dataSource = app.get<DataSource>(getConnectionToken());
+      await seedDatabase(dataSource);
+      logger.info('[BOOTSTRAP] Database seed completed successfully');
+    } catch (error) {
+      logger.error('[BOOTSTRAP] Failed to seed database on startup', { error });
+      // Don't exit - allow the app to start even if seeding fails
+    }
+  }
 
   const port = process.env.PORT || 3000;
   await app.listen(port);
