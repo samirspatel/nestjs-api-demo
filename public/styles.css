@@ -19,34 +19,66 @@ body {
 }
 
 header {
-    background: #ffffff;
-    border-bottom: 1px solid #ebebeb;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-bottom: none;
     padding: 0;
     position: sticky;
     top: 0;
     z-index: 100;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15), 0 2px 4px rgba(102, 126, 234, 0.1);
 }
 
 .header-top {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 20px 40px;
-    border-bottom: 1px solid #ebebeb;
+    padding: 0 40px;
+    min-height: 72px;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 40px;
+    flex: 1;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 0;
+}
+
+.logo svg {
+    color: #ffffff;
+    flex-shrink: 0;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
 }
 
 header h1 {
-    font-size: 22px;
-    font-weight: 600;
-    color: #222222;
+    font-size: 24px;
+    font-weight: 700;
+    background: linear-gradient(135deg, #ffffff 0%, #f0f0f0 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
     margin: 0;
+    letter-spacing: -0.5px;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.logo:hover h1 {
+    background: linear-gradient(135deg, #ffffff 0%, #e0e0e0 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
 }
 
 .header-actions {
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: 12px;
 }
 
 .header-link {
@@ -54,65 +86,60 @@ header h1 {
     align-items: center;
     gap: 8px;
     padding: 10px 16px;
-    color: #222222;
+    color: #ffffff;
     text-decoration: none;
-    border-radius: 8px;
+    border-radius: 10px;
     font-size: 14px;
     font-weight: 600;
     transition: all 0.2s ease;
-    border: 1px solid transparent;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
 }
 
 .header-link:hover {
-    background: #f7f7f7;
-    border-color: #ebebeb;
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.3);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
 .header-link svg {
     flex-shrink: 0;
 }
 
-.header-add-btn {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 10px 16px;
-}
-
-.header-add-btn svg {
-    flex-shrink: 0;
-}
 
 .tabs {
     display: flex;
-    gap: 0;
-    padding: 0 40px;
-    border-bottom: 1px solid #ebebeb;
+    gap: 4px;
+    align-items: center;
 }
 
 .tab-btn {
-    padding: 16px 24px;
+    padding: 10px 20px;
     background: transparent;
     border: none;
-    color: #717171;
-    border-radius: 0;
+    color: rgba(255, 255, 255, 0.8);
+    border-radius: 10px;
     cursor: pointer;
     font-size: 14px;
     font-weight: 600;
-    transition: all 0.2s;
+    transition: all 0.2s ease;
     position: relative;
-    border-bottom: 2px solid transparent;
+    border: 1px solid transparent;
 }
 
 .tab-btn:hover {
-    color: #222222;
-    background: #f7f7f7;
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
 }
 
 .tab-btn.active {
-    color: #222222;
-    border-bottom-color: #222222;
-    background: transparent;
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.3);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 main {
@@ -140,6 +167,16 @@ main {
     font-size: 22px;
     font-weight: 600;
     color: #222222;
+}
+
+.section-header .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.section-header .btn svg {
+    flex-shrink: 0;
 }
 
 .filters {
@@ -915,14 +952,45 @@ main {
     }
 
     .header-top {
-        padding: 16px 20px;
+        padding: 0 20px;
+        min-height: 64px;
         flex-wrap: wrap;
-        gap: 12px;
+    }
+
+    .header-left {
+        gap: 20px;
+        flex-wrap: wrap;
+    }
+
+    .logo {
+        padding: 12px 0;
+    }
+
+    .logo svg {
+        width: 28px;
+        height: 28px;
     }
 
     header h1 {
-        font-size: 18px;
+        font-size: 20px;
     }
+
+    .tabs {
+        gap: 2px;
+        order: 3;
+        width: 100%;
+        margin-top: 8px;
+        padding-bottom: 8px;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        padding-top: 8px;
+    }
+
+    .tab-btn {
+        padding: 8px 16px;
+        font-size: 13px;
+        flex: 1;
+    }
+
 
     .header-actions {
         gap: 8px;
@@ -937,23 +1005,6 @@ main {
         display: none;
     }
 
-    .header-add-btn {
-        padding: 8px 12px;
-        font-size: 13px;
-    }
-
-    .header-add-btn span {
-        display: none;
-    }
-
-    .tabs {
-        padding: 0 20px;
-    }
-
-    .tab-btn {
-        padding: 12px 16px;
-        font-size: 13px;
-    }
 
     .section-header {
         flex-direction: column;

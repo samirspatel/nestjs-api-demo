@@ -16,11 +16,6 @@ document.addEventListener('DOMContentLoaded', () => {
   setupTabs();
   setupFormHandlers();
   loadInitialData();
-  // Show the add button for the initial active tab (books)
-  const headerAddBtn = document.getElementById('header-add-btn');
-  const headerAddText = document.getElementById('header-add-text');
-  headerAddBtn.style.display = 'flex';
-  headerAddText.textContent = 'Add Book';
 });
 
 // Tab switching
@@ -47,20 +42,6 @@ function switchTab(tabName) {
   });
   document.getElementById(`${tabName}-tab`).classList.add('active');
 
-  // Update header add button based on active tab
-  const headerAddBtn = document.getElementById('header-add-btn');
-  const headerAddText = document.getElementById('header-add-text');
-
-  if (tabName === 'books') {
-    headerAddBtn.style.display = 'flex';
-    headerAddText.textContent = 'Add Book';
-  } else if (tabName === 'authors') {
-    headerAddBtn.style.display = 'flex';
-    headerAddText.textContent = 'Add Author';
-  } else {
-    headerAddBtn.style.display = 'none';
-  }
-
   // Load data for the tab
   if (tabName === 'books') {
     loadBooks();
@@ -68,15 +49,6 @@ function switchTab(tabName) {
     loadAuthors();
   } else if (tabName === 'borrowings') {
     loadBorrowings();
-  }
-}
-
-function handleHeaderAddClick() {
-  const activeTab = document.querySelector('.tab-btn.active')?.dataset.tab;
-  if (activeTab === 'books') {
-    showBookForm();
-  } else if (activeTab === 'authors') {
-    showAuthorForm();
   }
 }
 
