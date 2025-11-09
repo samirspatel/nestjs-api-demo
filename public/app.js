@@ -966,20 +966,6 @@ function setupFormHandlers() {
   }
 }
 
-function borrowBookSubmit(event) {
-  if (event && typeof event.preventDefault === 'function') {
-    event.preventDefault();
-  }
-  const borrowingData = {
-    bookId: parseInt(document.getElementById('borrow-book').value),
-    borrowerName: document.getElementById('borrower-name').value,
-    borrowerEmail: document.getElementById('borrower-email').value,
-    borrowDays: parseInt(document.getElementById('borrow-days').value),
-  };
-
-  borrowBook(borrowingData);
-}
-
 // Utility Functions
 function closeModal(modalId) {
   document.getElementById(modalId).classList.remove('active');
