@@ -10,6 +10,11 @@ document.addEventListener('DOMContentLoaded', () => {
     setupTabs();
     setupFormHandlers();
     loadInitialData();
+    // Show the add button for the initial active tab (books)
+    const headerAddBtn = document.getElementById('header-add-btn');
+    const headerAddText = document.getElementById('header-add-text');
+    headerAddBtn.style.display = 'flex';
+    headerAddText.textContent = 'Add Book';
 });
 
 // Tab switching
@@ -36,6 +41,20 @@ function switchTab(tabName) {
     });
     document.getElementById(`${tabName}-tab`).classList.add('active');
 
+    // Update header add button based on active tab
+    const headerAddBtn = document.getElementById('header-add-btn');
+    const headerAddText = document.getElementById('header-add-text');
+    
+    if (tabName === 'books') {
+        headerAddBtn.style.display = 'flex';
+        headerAddText.textContent = 'Add Book';
+    } else if (tabName === 'authors') {
+        headerAddBtn.style.display = 'flex';
+        headerAddText.textContent = 'Add Author';
+    } else {
+        headerAddBtn.style.display = 'none';
+    }
+
     // Load data for the tab
     if (tabName === 'books') {
         loadBooks();
@@ -43,6 +62,15 @@ function switchTab(tabName) {
         loadAuthors();
     } else if (tabName === 'borrowings') {
         loadBorrowings();
+    }
+}
+
+function handleHeaderAddClick() {
+    const activeTab = document.querySelector('.tab-btn.active')?.dataset.tab;
+    if (activeTab === 'books') {
+        showBookForm();
+    } else if (activeTab === 'authors') {
+        showAuthorForm();
     }
 }
 
@@ -162,11 +190,82 @@ function generatePlaceholderImage(book) {
 function getBookCoverImageUrl(book) {
     // Try to get cover from Open Library using ISBN (remove dashes)
     const isbn = book.isbn.replace(/-/g, '').replace(/\s/g, '');
-    if (isbn.length === 13) {
-        return `https://covers.openlibrary.org/b/isbn/${isbn}-L.jpg`;
-    } else if (isbn.length === 10) {
+    
+    // For ISBN-13 starting with 978, also try ISBN-10 format
+    if (isbn.length === 13 && isbn.startsWith('978')) {
+        // Calculate ISBN-10 from ISBN-13
+        const isbn10Base = isbn.substring(3, 12);
+        let sum = 0;
+        for (let i = 0; i < 9; i++) {
+            sum += parseInt(isbn10Base[i]) * (10 - i);
+        }
+        const checkDigit = (11 - (sum % 11)) % 11;
+        const checkChar = checkDigit === 10 ? 'X' : checkDigit.toString();
+        const isbn10 = isbn10Base + checkChar;
+        
+        // Store both URLs for fallback - we'll try ISBN-10 first as it's more reliable
+        // The checkImageLoaded function will handle fallback if both fail
+        return {
+            primary: `https://covers.openlibrary.org/b/isbn/${isbn10}-L.jpg`,
+            fallback: `https://covers.openlibrary.org/b/isbn/${isbn}-L.jpg`
+        };
+    }
+    
+    // For regular ISBN-13 or ISBN-10
+    if (isbn.length === 13 || isbn.length === 10) {
         return `https://covers.openlibrary.org/b/isbn/${isbn}-L.jpg`;
     }
+    
+    return null;
+}
+
+function generateAuthorPlaceholderImage(author) {
+    // Generate initials from author name
+    const firstName = author.firstName || '';
+    const lastName = author.lastName || '';
+    let initials = '';
+    
+    if (firstName && lastName) {
+        initials = (firstName[0] + lastName[0]).toUpperCase();
+    } else if (firstName) {
+        initials = firstName.substring(0, 2).toUpperCase();
+    } else if (lastName) {
+        initials = lastName.substring(0, 2).toUpperCase();
+    } else {
+        initials = 'AU';
+    }
+    
+    // Generate color based on author ID for consistency
+    const colors = ['#667eea', '#764ba2', '#f093fb', '#4facfe', '#43e97b', '#fa709a', '#fee140', '#30cfd0', '#ff6b6b', '#4ecdc4'];
+    const colorIndex = (author.id || (author.firstName ? author.firstName.charCodeAt(0) : 0)) % colors.length;
+    const bgColor = colors[colorIndex];
+    
+    const fullName = `${firstName} ${lastName}`.trim() || 'Author';
+    
+    // Create SVG placeholder
+    const svg = `<svg width="200" height="200" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+            <linearGradient id="authorGrad${author.id || 0}" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" style="stop-color:${bgColor};stop-opacity:1" />
+                <stop offset="100%" style="stop-color:${bgColor}dd;stop-opacity:1" />
+            </linearGradient>
+        </defs>
+        <rect width="200" height="200" fill="url(#authorGrad${author.id || 0})" rx="50%"/>
+        <circle cx="100" cy="80" r="35" fill="rgba(255,255,255,0.3)"/>
+        <text x="50%" y="50%" font-family="Arial, sans-serif" font-size="48" font-weight="bold" fill="white" text-anchor="middle" dominant-baseline="middle">${escapeXml(initials)}</text>
+        <text x="50%" y="75%" font-family="Arial, sans-serif" font-size="10" fill="rgba(255,255,255,0.8)" text-anchor="middle" dominant-baseline="middle">${escapeXml(fullName.substring(0, 15))}${fullName.length > 15 ? '...' : ''}</text>
+    </svg>`;
+    
+    return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+}
+
+function getAuthorImageUrl(author) {
+    // Try to get author image from Wikipedia or other sources
+    // For now, we'll use placeholder images
+    // In the future, could integrate with Wikipedia API or other services
+    const fullName = `${author.firstName} ${author.lastName}`.trim();
+    // Wikipedia image URL format (would need API call to get actual image)
+    // For now, return null to use placeholder
     return null;
 }
 
@@ -181,7 +280,13 @@ function renderBooks(booksToRender) {
         const author = authors.find(a => a.id === book.authorId);
         const authorName = author ? `${author.firstName} ${author.lastName}` : 'Unknown';
         const placeholderImage = generatePlaceholderImage(book);
-        const coverImageUrl = getBookCoverImageUrl(book);
+        const coverImageUrlData = getBookCoverImageUrl(book);
+        const coverImageUrl = coverImageUrlData && typeof coverImageUrlData === 'object' 
+            ? coverImageUrlData.primary 
+            : coverImageUrlData;
+        const fallbackImageUrl = coverImageUrlData && typeof coverImageUrlData === 'object' 
+            ? coverImageUrlData.fallback 
+            : null;
         const bookId = book.id;
         const bookTitle = escapeHtml(book.title);
         
@@ -193,8 +298,10 @@ function renderBooks(booksToRender) {
                             src="${coverImageUrl}" 
                             alt="${bookTitle}" 
                             data-placeholder="${placeholderImage}"
+                            data-fallback="${fallbackImageUrl || ''}"
                             data-book-id="${bookId}"
                             onerror="handleImageError(this)"
+                            onload="checkImageLoaded(this)"
                             loading="lazy"
                         >
                     ` : `
@@ -206,25 +313,19 @@ function renderBooks(booksToRender) {
                     `}
                 </div>
                 <div class="card-header">
-                    <div>
+                    <div style="flex: 1;">
                         <div class="card-title">${bookTitle}</div>
                         <div class="card-subtitle">by ${escapeHtml(authorName)}</div>
                     </div>
-                    <span class="card-badge ${book.available ? 'badge-available' : 'badge-unavailable'}">
-                        ${book.available ? 'Available' : 'Unavailable'}
-                    </span>
                 </div>
-                <div class="card-body">
-                    <div class="card-info">
-                        <div><strong>ISBN:</strong> ${escapeHtml(book.isbn)}</div>
-                        <div><strong>Published:</strong> ${book.publishedYear}</div>
-                        ${book.genre ? `<div><strong>Genre:</strong> ${escapeHtml(book.genre)}</div>` : ''}
-                    </div>
+                <div class="card-info">
+                    ${book.genre ? `<div style="text-transform: uppercase; font-size: 12px; letter-spacing: 0.5px; color: #717171; margin-bottom: 4px;">${escapeHtml(book.genre)}</div>` : ''}
+                    <div style="font-size: 14px; color: #717171;">${book.publishedYear}</div>
                 </div>
                 <div class="card-actions">
-                    ${book.available ? `<button class="btn btn-success btn-small" onclick="showBorrowForm(${book.id})">Borrow</button>` : ''}
-                    <button class="btn btn-primary btn-small" onclick="editBook(${book.id})">Edit</button>
-                    <button class="btn btn-danger btn-small" onclick="deleteBook(${book.id})">Delete</button>
+                    ${book.available ? `<button class="btn btn-primary btn-small" onclick="showBorrowForm(${book.id})" style="flex: 1;">Borrow</button>` : '<div style="padding: 8px 16px; font-size: 14px; color: #717171; text-align: center; flex: 1;">Unavailable</div>'}
+                    <button class="btn btn-secondary btn-small" onclick="editBook(${book.id})" style="min-width: 60px;">Edit</button>
+                    <button class="btn btn-danger btn-small" onclick="deleteBook(${book.id})" style="min-width: 60px;">Delete</button>
                 </div>
             </div>
         `;
@@ -402,24 +503,44 @@ function renderAuthors(authorsToRender) {
 
     container.innerHTML = authorsToRender.map(author => {
         const bookCount = books.filter(b => b.authorId === author.id).length;
+        const placeholderImage = generateAuthorPlaceholderImage(author);
+        const authorImageUrl = getAuthorImageUrl(author);
+        const authorId = author.id;
+        const authorName = `${escapeHtml(author.firstName)} ${escapeHtml(author.lastName)}`;
+        
         return `
-            <div class="card">
-                <div class="card-header">
-                    <div>
-                        <div class="card-title">${escapeHtml(author.firstName)} ${escapeHtml(author.lastName)}</div>
+            <div class="card author-card">
+                <div class="author-avatar">
+                    ${authorImageUrl ? `
+                        <img 
+                            src="${authorImageUrl}" 
+                            alt="${authorName}" 
+                            data-placeholder="${placeholderImage}"
+                            data-author-id="${authorId}"
+                            onerror="handleImageError(this)"
+                            loading="lazy"
+                        >
+                    ` : `
+                        <img 
+                            src="${placeholderImage}" 
+                            alt="${authorName}"
+                            loading="lazy"
+                        >
+                    `}
+                </div>
+                <div class="card-header" style="width: 100%; justify-content: center;">
+                    <div style="text-align: center;">
+                        <div class="card-title">${authorName}</div>
                         ${author.nationality ? `<div class="card-subtitle">${escapeHtml(author.nationality)}</div>` : ''}
                     </div>
                 </div>
-                <div class="card-body">
-                    <div class="card-info">
-                        ${author.dateOfBirth ? `<div><strong>Born:</strong> ${new Date(author.dateOfBirth).getFullYear()}</div>` : ''}
-                        <div><strong>Books:</strong> ${bookCount}</div>
-                        ${author.biography ? `<div style="margin-top: 10px; font-size: 0.85em;">${escapeHtml(author.biography.substring(0, 100))}${author.biography.length > 100 ? '...' : ''}</div>` : ''}
-                    </div>
+                <div class="card-info" style="text-align: center; margin-bottom: 16px;">
+                    ${author.dateOfBirth ? `<div style="font-size: 14px; color: #717171;">Born ${new Date(author.dateOfBirth).getFullYear()}</div>` : ''}
+                    <div style="font-size: 14px; color: #717171; margin-top: 4px;">${bookCount} ${bookCount === 1 ? 'book' : 'books'}</div>
                 </div>
-                <div class="card-actions">
-                    <button class="btn btn-primary btn-small" onclick="editAuthor(${author.id})">Edit</button>
-                    <button class="btn btn-danger btn-small" onclick="deleteAuthor(${author.id})">Delete</button>
+                <div class="card-actions" style="width: 100%; justify-content: center;">
+                    <button class="btn btn-primary btn-small" onclick="editAuthor(${author.id})" style="flex: 1; max-width: 120px;">Edit</button>
+                    <button class="btn btn-danger btn-small" onclick="deleteAuthor(${author.id})" style="flex: 1; max-width: 120px;">Delete</button>
                 </div>
             </div>
         `;
@@ -685,11 +806,46 @@ function escapeHtml(text) {
 }
 
 function handleImageError(img) {
-    // If image fails to load, use the placeholder
+    // First try fallback URL if available
+    if (img.dataset.fallback && img.dataset.fallback !== img.src) {
+        img.src = img.dataset.fallback;
+        return; // Don't set onerror to null yet, let it try fallback first
+    }
+    
+    // If fallback also fails or doesn't exist, use the placeholder
     if (img.dataset.placeholder) {
         img.src = img.dataset.placeholder;
         img.onerror = null; // Prevent infinite loop
     }
+}
+
+function checkImageLoaded(img) {
+    // Use setTimeout to ensure dimensions are available
+    setTimeout(() => {
+        // Check if image is actually loaded and not a placeholder (1x1 pixel)
+        // Open Library sometimes returns 1x1 pixel GIFs as placeholders
+        if (img.complete && img.naturalWidth === 1 && img.naturalHeight === 1) {
+            // This is likely a placeholder image, try fallback or use our generated one
+            if (img.dataset.fallback && img.dataset.fallback !== img.src) {
+                // Try the fallback URL first
+                const fallbackSrc = img.dataset.fallback;
+                img.src = fallbackSrc;
+                // Check fallback after it loads
+                img.onload = function() {
+                    setTimeout(() => {
+                        if (img.naturalWidth === 1 && img.naturalHeight === 1 && img.dataset.placeholder) {
+                            img.src = img.dataset.placeholder;
+                            img.onerror = null;
+                        }
+                    }, 100);
+                };
+            } else if (img.dataset.placeholder) {
+                // Use our generated placeholder
+                img.src = img.dataset.placeholder;
+                img.onerror = null;
+            }
+        }
+    }, 100);
 }
 
 // Close modal when clicking outside

@@ -47,6 +47,9 @@ up:
 			echo "✗ Error: Database did not become ready in time"; \
 			exit 1; \
 		fi; \
+		echo "BOOTSTRAP: Ensuring database exists..."; \
+		docker-compose exec -T postgres psql -U library_user -d library_db -c "SELECT 1 FROM pg_database WHERE datname='library_user';" > /dev/null 2>&1 || \
+		docker-compose exec -T postgres psql -U library_user -d library_db -c "CREATE DATABASE library_user;" > /dev/null 2>&1 || true; \
 		echo "BOOTSTRAP: Waiting for app to create database schema..."; \
 		timeout=30; \
 		while [ $$timeout -gt 0 ]; do \
