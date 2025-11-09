@@ -15,16 +15,18 @@ import { BooksService } from './books.service';
 import { CreateBookDto } from './dto/create-book.dto';
 import { UpdateBookDto } from './dto/update-book.dto';
 import { BookResponseDto } from './dto/book-response.dto';
-import { LoggerService } from '../common/logger/logger.service';
+import { Inject } from '@nestjs/common';
+import { Logger } from 'common-sense-logger';
 
 @ApiTags('books')
 @Controller('books')
 export class BooksController {
   constructor(
     private readonly booksService: BooksService,
-    private readonly logger: LoggerService,
+    @Inject('LOGGER')
+    private readonly logger: Logger,
   ) {
-    this.logger.info('BooksController initialized', 'BOOKS_CONTROLLER');
+    this.logger.info('[BOOKS_CONTROLLER] BooksController initialized');
   }
 
   @Post()
@@ -37,19 +39,20 @@ export class BooksController {
   })
   @ApiResponse({ status: 400, description: 'Bad request - Invalid input or ISBN already exists.' })
   async create(@Body() createBookDto: CreateBookDto) {
-    this.logger.info('POST /books - Creating new book', 'BOOKS_CONTROLLER', {
+    this.logger.info('[BOOKS_CONTROLLER] POST /books - Creating new book', {
       title: createBookDto.title,
       isbn: createBookDto.isbn,
     });
     try {
       const book = await this.booksService.create(createBookDto);
-      this.logger.info('Book creation successful', 'BOOKS_CONTROLLER', {
+      this.logger.info('[BOOKS_CONTROLLER] Book creation successful', {
         bookId: book.id,
       });
       return book;
     } catch (error) {
-      this.logger.error('Failed to create book', error.stack, 'BOOKS_CONTROLLER', {
+      this.logger.error('[BOOKS_CONTROLLER] Failed to create book', {
         createBookDto,
+        stack: error.stack,
       });
       throw error;
     }
@@ -75,25 +78,25 @@ export class BooksController {
     @Query('genre') genre?: string,
     @Query('available') available?: string,
   ) {
-    this.logger.debug('GET /books - Fetching books', 'BOOKS_CONTROLLER', {
+    this.logger.debug('[BOOKS_CONTROLLER] GET /books - Fetching books', {
       filters: { authorId, genre, available },
     });
 
     let result;
     if (authorId) {
-      this.logger.info(`Filtering books by author: ${authorId}`, 'BOOKS_CONTROLLER');
+      this.logger.info(`[BOOKS_CONTROLLER] Filtering books by author: ${authorId}`);
       result = await this.booksService.findByAuthor(Number(authorId));
     } else if (genre) {
-      this.logger.info(`Filtering books by genre: ${genre}`, 'BOOKS_CONTROLLER');
+      this.logger.info(`[BOOKS_CONTROLLER] Filtering books by genre: ${genre}`);
       result = await this.booksService.findByGenre(genre);
     } else if (available === 'true') {
-      this.logger.info('Filtering available books', 'BOOKS_CONTROLLER');
+      this.logger.info('[BOOKS_CONTROLLER] Filtering available books');
       result = await this.booksService.findAvailable();
     } else {
       result = await this.booksService.findAll();
     }
 
-    this.logger.verbose(`Returning ${result.length} books`, 'BOOKS_CONTROLLER', {
+    this.logger.debug(`[BOOKS_CONTROLLER] Returning ${result.length} books`, {
       count: result.length,
     });
     return result;
@@ -109,19 +112,20 @@ export class BooksController {
   })
   @ApiResponse({ status: 404, description: 'Book not found.' })
   async findOne(@Param('id') id: string) {
-    this.logger.debug(`GET /books/${id} - Fetching book`, 'BOOKS_CONTROLLER', {
+    this.logger.debug(`[BOOKS_CONTROLLER] GET /books/${id} - Fetching book`, {
       bookId: id,
     });
     try {
       const book = await this.booksService.findOne(+id);
-      this.logger.verbose('Book retrieved successfully', 'BOOKS_CONTROLLER', {
+      this.logger.debug('[BOOKS_CONTROLLER] Book retrieved successfully', {
         bookId: book.id,
         title: book.title,
       });
       return book;
     } catch (error) {
-      this.logger.error(`Failed to retrieve book ${id}`, error.stack, 'BOOKS_CONTROLLER', {
+      this.logger.error(`[BOOKS_CONTROLLER] Failed to retrieve book ${id}`, {
         bookId: id,
+        stack: error.stack,
       });
       throw error;
     }
@@ -139,20 +143,21 @@ export class BooksController {
   @ApiResponse({ status: 404, description: 'Book not found.' })
   @ApiResponse({ status: 400, description: 'Bad request - Invalid input.' })
   async update(@Param('id') id: string, @Body() updateBookDto: UpdateBookDto) {
-    this.logger.info(`PATCH /books/${id} - Updating book`, 'BOOKS_CONTROLLER', {
+    this.logger.info(`[BOOKS_CONTROLLER] PATCH /books/${id} - Updating book`, {
       bookId: id,
       updates: Object.keys(updateBookDto),
     });
     try {
       const book = await this.booksService.update(+id, updateBookDto);
-      this.logger.info('Book update successful', 'BOOKS_CONTROLLER', {
+      this.logger.info('[BOOKS_CONTROLLER] Book update successful', {
         bookId: book.id,
       });
       return book;
     } catch (error) {
-      this.logger.error(`Failed to update book ${id}`, error.stack, 'BOOKS_CONTROLLER', {
+      this.logger.error(`[BOOKS_CONTROLLER] Failed to update book ${id}`, {
         bookId: id,
         updateBookDto,
+        stack: error.stack,
       });
       throw error;
     }
@@ -165,17 +170,18 @@ export class BooksController {
   @ApiResponse({ status: 204, description: 'The book has been successfully deleted.' })
   @ApiResponse({ status: 404, description: 'Book not found.' })
   async remove(@Param('id') id: string) {
-    this.logger.info(`DELETE /books/${id} - Deleting book`, 'BOOKS_CONTROLLER', {
+    this.logger.info(`[BOOKS_CONTROLLER] DELETE /books/${id} - Deleting book`, {
       bookId: id,
     });
     try {
       await this.booksService.remove(+id);
-      this.logger.info('Book deletion successful', 'BOOKS_CONTROLLER', {
+      this.logger.info('[BOOKS_CONTROLLER] Book deletion successful', {
         bookId: id,
       });
     } catch (error) {
-      this.logger.error(`Failed to delete book ${id}`, error.stack, 'BOOKS_CONTROLLER', {
+      this.logger.error(`[BOOKS_CONTROLLER] Failed to delete book ${id}`, {
         bookId: id,
+        stack: error.stack,
       });
       throw error;
     }

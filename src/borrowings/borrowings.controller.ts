@@ -8,6 +8,7 @@ import {
   Query,
   HttpCode,
   HttpStatus,
+  Inject,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -20,16 +21,17 @@ import {
 import { BorrowingsService } from './borrowings.service';
 import { CreateBorrowingDto } from './dto/create-borrowing.dto';
 import { BorrowingResponseDto } from './dto/borrowing-response.dto';
-import { LoggerService } from '../common/logger/logger.service';
+import { Logger } from 'common-sense-logger';
 
 @ApiTags('borrowings')
 @Controller('borrowings')
 export class BorrowingsController {
   constructor(
     private readonly borrowingsService: BorrowingsService,
-    private readonly logger: LoggerService,
+    @Inject('LOGGER')
+    private readonly logger: Logger,
   ) {
-    this.logger.info('BorrowingsController initialized', 'BORROWINGS_CONTROLLER');
+    this.logger.info('[BORROWINGS_CONTROLLER] BorrowingsController initialized');
   }
 
   @Post()
@@ -43,23 +45,21 @@ export class BorrowingsController {
   @ApiResponse({ status: 400, description: 'Bad request - Book not available or already borrowed.' })
   @ApiResponse({ status: 404, description: 'Book not found.' })
   async borrow(@Body() createBorrowingDto: CreateBorrowingDto) {
-    this.logger.info('POST /borrowings - Borrowing book', 'BORROWINGS_CONTROLLER', {
+    this.logger.info('[BORROWINGS_CONTROLLER] POST /borrowings - Borrowing book', {
       bookId: createBorrowingDto.bookId,
       borrowerEmail: createBorrowingDto.borrowerEmail,
     });
     try {
       const borrowing = await this.borrowingsService.borrow(createBorrowingDto);
-      this.logger.info('Book borrowing successful', 'BORROWINGS_CONTROLLER', {
+      this.logger.info('[BORROWINGS_CONTROLLER] Book borrowing successful', {
         borrowingId: borrowing.id,
       });
       return borrowing;
     } catch (error) {
-      this.logger.error(
-        'Failed to borrow book',
-        error.stack,
-        'BORROWINGS_CONTROLLER',
-        { createBorrowingDto },
-      );
+      this.logger.error('[BORROWINGS_CONTROLLER] Failed to borrow book', {
+        createBorrowingDto,
+        stack: error.stack,
+      });
       throw error;
     }
   }
@@ -77,22 +77,22 @@ export class BorrowingsController {
     @Query('borrowerEmail') borrowerEmail?: string,
     @Query('bookId') bookId?: string,
   ) {
-    this.logger.debug('GET /borrowings - Fetching borrowings', 'BORROWINGS_CONTROLLER', {
+    this.logger.debug('[BORROWINGS_CONTROLLER] GET /borrowings - Fetching borrowings', {
       filters: { borrowerEmail, bookId },
     });
 
     let result;
     if (borrowerEmail) {
-      this.logger.info(`Filtering borrowings by borrower: ${borrowerEmail}`, 'BORROWINGS_CONTROLLER');
+      this.logger.info(`[BORROWINGS_CONTROLLER] Filtering borrowings by borrower: ${borrowerEmail}`);
       result = await this.borrowingsService.findByBorrower(borrowerEmail);
     } else if (bookId) {
-      this.logger.info(`Filtering borrowings by book: ${bookId}`, 'BORROWINGS_CONTROLLER');
+      this.logger.info(`[BORROWINGS_CONTROLLER] Filtering borrowings by book: ${bookId}`);
       result = await this.borrowingsService.findByBook(Number(bookId));
     } else {
       result = await this.borrowingsService.findAll();
     }
 
-    this.logger.verbose(`Returning ${result.length} borrowings`, 'BORROWINGS_CONTROLLER', {
+    this.logger.debug(`[BORROWINGS_CONTROLLER] Returning ${result.length} borrowings`, {
       count: result.length,
     });
     return result;
@@ -108,23 +108,21 @@ export class BorrowingsController {
   })
   @ApiResponse({ status: 404, description: 'Borrowing not found.' })
   async findOne(@Param('id') id: string) {
-    this.logger.debug(`GET /borrowings/${id} - Fetching borrowing`, 'BORROWINGS_CONTROLLER', {
+    this.logger.debug(`[BORROWINGS_CONTROLLER] GET /borrowings/${id} - Fetching borrowing`, {
       borrowingId: id,
     });
     try {
       const borrowing = await this.borrowingsService.findOne(+id);
-      this.logger.verbose('Borrowing retrieved successfully', 'BORROWINGS_CONTROLLER', {
+      this.logger.debug('[BORROWINGS_CONTROLLER] Borrowing retrieved successfully', {
         borrowingId: borrowing.id,
         bookId: borrowing.bookId,
       });
       return borrowing;
     } catch (error) {
-      this.logger.error(
-        `Failed to retrieve borrowing ${id}`,
-        error.stack,
-        'BORROWINGS_CONTROLLER',
-        { borrowingId: id },
-      );
+      this.logger.error(`[BORROWINGS_CONTROLLER] Failed to retrieve borrowing ${id}`, {
+        borrowingId: id,
+        stack: error.stack,
+      });
       throw error;
     }
   }
@@ -141,25 +139,22 @@ export class BorrowingsController {
   @ApiResponse({ status: 400, description: 'Bad request - Book already returned.' })
   @ApiResponse({ status: 404, description: 'Borrowing not found.' })
   async returnBook(@Param('id') id: string) {
-    this.logger.info(`PATCH /borrowings/${id}/return - Returning book`, 'BORROWINGS_CONTROLLER', {
+    this.logger.info(`[BORROWINGS_CONTROLLER] PATCH /borrowings/${id}/return - Returning book`, {
       borrowingId: id,
     });
     try {
       const borrowing = await this.borrowingsService.returnBook(+id);
-      this.logger.info('Book return successful', 'BORROWINGS_CONTROLLER', {
+      this.logger.info('[BORROWINGS_CONTROLLER] Book return successful', {
         borrowingId: borrowing.id,
         status: borrowing.status,
       });
       return borrowing;
     } catch (error) {
-      this.logger.error(
-        `Failed to return book for borrowing ${id}`,
-        error.stack,
-        'BORROWINGS_CONTROLLER',
-        { borrowingId: id },
-      );
+      this.logger.error(`[BORROWINGS_CONTROLLER] Failed to return book for borrowing ${id}`, {
+        borrowingId: id,
+        stack: error.stack,
+      });
       throw error;
     }
   }
 }
-

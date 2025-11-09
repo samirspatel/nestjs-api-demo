@@ -1,40 +1,39 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Inject } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Author } from './entities/author.entity';
 import { CreateAuthorDto } from './dto/create-author.dto';
 import { UpdateAuthorDto } from './dto/update-author.dto';
-import { LoggerService } from '../common/logger/logger.service';
+import { Logger } from 'common-sense-logger';
 
 @Injectable()
 export class AuthorsService {
   constructor(
     @InjectRepository(Author)
     private readonly authorRepository: Repository<Author>,
-    private readonly logger: LoggerService,
+    @Inject('LOGGER')
+    private readonly logger: Logger,
   ) {
-    this.logger.info('AuthorsService initialized', 'AUTHORS_SERVICE');
+    this.logger.info('[AUTHORS_SERVICE] AuthorsService initialized');
   }
 
   async create(createAuthorDto: CreateAuthorDto): Promise<Author> {
-    this.logger.debug('Creating new author', 'AUTHORS_SERVICE', {
+    this.logger.debug('[AUTHORS_SERVICE] Creating new author', {
       firstName: createAuthorDto.firstName,
       lastName: createAuthorDto.lastName,
     });
 
     const author = this.authorRepository.create({
       ...createAuthorDto,
-      dateOfBirth: createAuthorDto.dateOfBirth
-        ? new Date(createAuthorDto.dateOfBirth)
-        : undefined,
+      dateOfBirth: createAuthorDto.dateOfBirth ? new Date(createAuthorDto.dateOfBirth) : undefined,
     });
 
     const savedAuthor = await this.authorRepository.save(author);
-    this.logger.info('Author created successfully', 'AUTHORS_SERVICE', {
+    this.logger.info('[AUTHORS_SERVICE] Author created successfully', {
       authorId: savedAuthor.id,
       fullName: `${savedAuthor.firstName} ${savedAuthor.lastName}`,
     });
-    this.logger.logBusinessEvent('AUTHOR_CREATED', {
+    this.logger.info('[BUSINESS_EVENT] AUTHOR_CREATED', {
       authorId: savedAuthor.id,
       fullName: `${savedAuthor.firstName} ${savedAuthor.lastName}`,
     });
@@ -44,25 +43,25 @@ export class AuthorsService {
 
   async findAll(): Promise<Author[]> {
     const authors = await this.authorRepository.find();
-    this.logger.debug('Fetching all authors', 'AUTHORS_SERVICE', {
+    this.logger.debug('[AUTHORS_SERVICE] Fetching all authors', {
       totalAuthors: authors.length,
     });
-    this.logger.verbose(`Retrieved ${authors.length} authors`, 'AUTHORS_SERVICE');
+    this.logger.debug(`[AUTHORS_SERVICE] Retrieved ${authors.length} authors`);
     return authors;
   }
 
   async findOne(id: number): Promise<Author> {
-    this.logger.debug(`Fetching author with ID: ${id}`, 'AUTHORS_SERVICE', {
+    this.logger.debug(`[AUTHORS_SERVICE] Fetching author with ID: ${id}`, {
       authorId: id,
     });
     const author = await this.authorRepository.findOne({ where: { id } });
     if (!author) {
-      this.logger.warn(`Author not found: ${id}`, 'AUTHORS_SERVICE', {
+      this.logger.warn(`[AUTHORS_SERVICE] Author not found: ${id}`, {
         authorId: id,
       });
       throw new NotFoundException(`Author with ID ${id} not found`);
     }
-    this.logger.debug('Author found', 'AUTHORS_SERVICE', {
+    this.logger.debug('[AUTHORS_SERVICE] Author found', {
       authorId: author.id,
       fullName: `${author.firstName} ${author.lastName}`,
     });
@@ -70,14 +69,14 @@ export class AuthorsService {
   }
 
   async update(id: number, updateAuthorDto: UpdateAuthorDto): Promise<Author> {
-    this.logger.debug(`Updating author with ID: ${id}`, 'AUTHORS_SERVICE', {
+    this.logger.debug(`[AUTHORS_SERVICE] Updating author with ID: ${id}`, {
       authorId: id,
       updates: updateAuthorDto,
     });
 
     const author = await this.authorRepository.findOne({ where: { id } });
     if (!author) {
-      this.logger.warn(`Author not found for update: ${id}`, 'AUTHORS_SERVICE', {
+      this.logger.warn(`[AUTHORS_SERVICE] Author not found for update: ${id}`, {
         authorId: id,
       });
       throw new NotFoundException(`Author with ID ${id} not found`);
@@ -93,16 +92,16 @@ export class AuthorsService {
     });
 
     const updatedAuthor = await this.authorRepository.save(author);
-    this.logger.info('Author updated successfully', 'AUTHORS_SERVICE', {
+    this.logger.info('[AUTHORS_SERVICE] Author updated successfully', {
       authorId: id,
       changes: Object.keys(updateAuthorDto),
     });
-    this.logger.logBusinessEvent('AUTHOR_UPDATED', {
+    this.logger.info('[BUSINESS_EVENT] AUTHOR_UPDATED', {
       authorId: id,
       fullName: `${updatedAuthor.firstName} ${updatedAuthor.lastName}`,
       changes: updateAuthorDto,
     });
-    this.logger.verbose('Author update details', 'AUTHORS_SERVICE', {
+    this.logger.debug('[AUTHORS_SERVICE] Author update details', {
       authorId: id,
       before: oldAuthor,
       after: updatedAuthor,
@@ -112,26 +111,25 @@ export class AuthorsService {
   }
 
   async remove(id: number): Promise<void> {
-    this.logger.debug(`Deleting author with ID: ${id}`, 'AUTHORS_SERVICE', {
+    this.logger.debug(`[AUTHORS_SERVICE] Deleting author with ID: ${id}`, {
       authorId: id,
     });
     const author = await this.authorRepository.findOne({ where: { id } });
     if (!author) {
-      this.logger.warn(`Author not found for deletion: ${id}`, 'AUTHORS_SERVICE', {
+      this.logger.warn(`[AUTHORS_SERVICE] Author not found for deletion: ${id}`, {
         authorId: id,
       });
       throw new NotFoundException(`Author with ID ${id} not found`);
     }
 
     await this.authorRepository.remove(author);
-    this.logger.info('Author deleted successfully', 'AUTHORS_SERVICE', {
+    this.logger.info('[AUTHORS_SERVICE] Author deleted successfully', {
       authorId: id,
       fullName: `${author.firstName} ${author.lastName}`,
     });
-    this.logger.logBusinessEvent('AUTHOR_DELETED', {
+    this.logger.info('[BUSINESS_EVENT] AUTHOR_DELETED', {
       authorId: id,
       fullName: `${author.firstName} ${author.lastName}`,
     });
   }
 }
-

@@ -1,10 +1,18 @@
 import { Global, Module } from '@nestjs/common';
-import { LoggerService } from './logger.service';
+import { Logger } from 'common-sense-logger';
+
+const logger = new Logger({
+  serviceName: 'nestjs-api-demo',
+});
 
 @Global()
 @Module({
-  providers: [LoggerService],
-  exports: [LoggerService],
+  providers: [
+    {
+      provide: 'LOGGER',
+      useValue: logger,
+    },
+  ],
+  exports: ['LOGGER'],
 })
 export class LoggerModule {}
-

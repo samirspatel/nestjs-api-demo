@@ -4,7 +4,11 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
 import { AppModule } from './app.module';
-import { LoggerService } from './common/logger/logger.service';
+import { Logger } from 'common-sense-logger';
+
+const logger = new Logger({
+  serviceName: 'nestjs-api-demo',
+});
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
@@ -17,11 +21,9 @@ async function bootstrap() {
     prefix: '/',
   });
 
-  const logger = app.get(LoggerService);
-
   // Log application startup
-  logger.info('Starting Library Management API...', 'BOOTSTRAP');
-  logger.debug('Environment variables loaded', 'BOOTSTRAP', {
+  logger.info('[BOOTSTRAP] Starting Library Management API...');
+  logger.debug('[BOOTSTRAP] Environment variables loaded', {
     nodeEnv: process.env.NODE_ENV || 'development',
     port: process.env.PORT || 3000,
   });
@@ -34,7 +36,7 @@ async function bootstrap() {
       transform: true,
     }),
   );
-  logger.info('Global validation pipes configured', 'BOOTSTRAP');
+  logger.info('[BOOTSTRAP] Global validation pipes configured');
 
   // Swagger configuration
   const config = new DocumentBuilder()
@@ -50,14 +52,14 @@ async function bootstrap() {
 
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, document);
-  logger.info('Swagger documentation configured at /api', 'BOOTSTRAP');
+  logger.info('[BOOTSTRAP] Swagger documentation configured at /api');
 
   const port = process.env.PORT || 3000;
   await app.listen(port);
 
-  logger.info(`Application is running on: http://localhost:${port}`, 'BOOTSTRAP');
-  logger.info(`Swagger documentation available at: http://localhost:${port}/api`, 'BOOTSTRAP');
-  logger.verbose('Application bootstrap completed successfully', 'BOOTSTRAP', {
+  logger.info(`[BOOTSTRAP] Application is running on: http://localhost:${port}`);
+  logger.info(`[BOOTSTRAP] Swagger documentation available at: http://localhost:${port}/api`);
+  logger.debug('[BOOTSTRAP] Application bootstrap completed successfully', {
     port,
     timestamp: new Date().toISOString(),
   });
