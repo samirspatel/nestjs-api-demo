@@ -1,7 +1,8 @@
-import { Injectable, NotFoundException, Inject } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Inject } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Author } from './entities/author.entity';
+import { Book } from '../books/entities/book.entity';
 import { CreateAuthorDto } from './dto/create-author.dto';
 import { UpdateAuthorDto } from './dto/update-author.dto';
 import { Logger } from 'common-sense-logger';
@@ -11,6 +12,8 @@ export class AuthorsService {
   constructor(
     @InjectRepository(Author)
     private readonly authorRepository: Repository<Author>,
+    @InjectRepository(Book)
+    private readonly bookRepository: Repository<Book>,
     @Inject('LOGGER')
     private readonly logger: Logger,
   ) {
@@ -120,6 +123,17 @@ export class AuthorsService {
         authorId: id,
       });
       throw new NotFoundException(`Author with ID ${id} not found`);
+    }
+
+    const bookCount = await this.bookRepository.count({ where: { authorId: id } });
+    if (bookCount > 0) {
+      this.logger.warn(`[AUTHORS_SERVICE] Cannot delete author with books: ${id}`, {
+        authorId: id,
+        bookCount,
+      });
+      throw new BadRequestException(
+        `Cannot delete author with ID ${id}. This author has ${bookCount} book(s) associated. Please delete or reassign the books first.`,
+      );
     }
 
     await this.authorRepository.remove(author);

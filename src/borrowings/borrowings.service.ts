@@ -142,7 +142,9 @@ export class BorrowingsService {
     }
 
     const returnedDate = new Date();
-    const wasOverdue = borrowing.status === 'OVERDUE' || returnedDate > borrowing.dueDate;
+    // Ensure dueDate is a Date object (TypeORM may return strings)
+    const dueDate = borrowing.dueDate instanceof Date ? borrowing.dueDate : new Date(borrowing.dueDate);
+    const wasOverdue = borrowing.status === 'OVERDUE' || returnedDate > dueDate;
 
     borrowing.status = 'RETURNED';
     borrowing.returnedDate = returnedDate;
@@ -171,7 +173,7 @@ export class BorrowingsService {
       borrowerName: borrowing.borrowerName,
       wasOverdue,
       daysLate: wasOverdue
-        ? Math.floor((returnedDate.getTime() - borrowing.dueDate.getTime()) / (1000 * 60 * 60 * 24))
+        ? Math.floor((returnedDate.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24))
         : 0,
     });
     this.logger.info('[BUSINESS_EVENT] BOOK_RETURNED', {
@@ -205,7 +207,9 @@ export class BorrowingsService {
 
       let overdueCount = 0;
       for (const borrowing of borrowedBooks) {
-        if (now > borrowing.dueDate) {
+        // Ensure dueDate is a Date object (TypeORM may return strings)
+        const dueDate = borrowing.dueDate instanceof Date ? borrowing.dueDate : new Date(borrowing.dueDate);
+        if (now > dueDate) {
           borrowing.status = 'OVERDUE';
           await this.borrowingRepository.save(borrowing);
           overdueCount++;
@@ -214,9 +218,9 @@ export class BorrowingsService {
             borrowingId: borrowing.id,
             bookId: borrowing.bookId,
             borrowerName: borrowing.borrowerName,
-            dueDate: borrowing.dueDate.toISOString(),
+            dueDate: dueDate.toISOString(),
             daysOverdue: Math.floor(
-              (now.getTime() - borrowing.dueDate.getTime()) / (1000 * 60 * 60 * 24)
+              (now.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24)
             ),
           });
         }
